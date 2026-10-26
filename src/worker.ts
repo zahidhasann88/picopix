@@ -5,10 +5,11 @@
  * the message handler to the worker global scope. It is a separate bundle so the
  * main thread never pays for it.
  *
- * ```ts
- * // app.ts
- * const worker = new Worker(new URL('image-tools-core/worker', import.meta.url), { type: 'module' });
- * ```
+ * Normally you never import this file yourself: `createImageWorker()` from the
+ * main entry creates the worker with
+ * `new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })`,
+ * which Vite and webpack 5 resolve to this bundle automatically. To host it
+ * yourself, pass `{ workerUrl }` to `createImageWorker()`.
  */
 import { serveWorkerScope } from './worker/core';
 import { installBrowserBackend } from './codec/browser';

@@ -337,18 +337,14 @@ function createFallbackWorker(options: ImageWorkerOptions): ImageWorker {
       validateImage(image);
       const merged = { ...options.defaults, ...callOptions };
       if (merged.signal?.aborted) throw new AbortError();
-      let ratio = 0;
-      const result = executeOps(cloneImageForTransfer(image), ops, {
+      return executeOps(cloneImageForTransfer(image), ops, {
         isCancelled: () => merged.signal?.aborted === true,
         onProgress: merged.onProgress
-          ? (r, index, total, label) => {
-              ratio = r;
-              merged.onProgress?.({ phase: label, ratio: r, loaded: index, total });
+          ? (ratio, index, total, label) => {
+              merged.onProgress?.({ phase: label, ratio, loaded: index, total });
             }
           : undefined,
       });
-      void ratio;
-      return result;
     },
     async decode(input, callOptions = {}) {
       const merged = { ...options.defaults, ...callOptions };

@@ -1,6 +1,6 @@
 import { invalidArgument } from '../errors';
 import type { RawImage, ResizeKernel, ResizeOptions } from '../types';
-import { assertImage, clampByte, fromPremultiplied, toPremultiplied } from './util';
+import { assertImage, fromPremultiplied, toPremultiplied } from './util';
 import { computeFitSize, coverCropRect } from './fit';
 import { crop } from './transform';
 
@@ -10,36 +10,6 @@ const KERNEL_SUPPORT: Record<Exclude<ResizeKernel, 'nearest'>, number> = {
   'catmull-rom': 2,
   lanczos3: 3,
 };
-
-const BILINEAR_KEYS: Float64Array = new Float64Array([1]);
-
-const CATMULL_ROM_KEYS: Float64Array = (() => {
-  const k = new Float64Array(5);
-  for (let j = 0; j < 5; j++) {
-    const x = Math.abs(j - 2);
-    if (x < 1) k[j] = 1.5 * x * x * x - 2.5 * x * x + 1;
-    else if (x < 2) k[j] = -0.5 * x * x * x + 2.5 * x * x - 4 * x + 2;
-    else k[j] = 0;
-  }
-  return k;
-})();
-
-/** Normalised value of the Lanczos-3 kernel at integer offsets -3..3. */
-const LANCZOS3_KEYS: Float64Array = (() => {
-  const k = new Float64Array(7);
-  for (let j = 0; j < 7; j++) {
-    const x = Math.abs(j - 3);
-    if (x === 0) {
-      k[j] = 1;
-    } else if (x < 3) {
-      const px = Math.PI * x;
-      k[j] = (3 * Math.sin(px) * Math.sin(px / 3)) / (px * px);
-    } else {
-      k[j] = 0;
-    }
-  }
-  return k;
-})();
 
 /**
  * Taps used for one output pixel.
@@ -339,6 +309,3 @@ export function resize(image: RawImage, options: number | ResizeOptions): RawIma
 export function resizeTo(image: RawImage, width: number, height: number, kernel: ResizeKernel = 'lanczos3'): RawImage {
   return resizeWithKernel(image, { width, height }, kernel);
 }
-
-export { BILINEAR_KEYS, CATMULL_ROM_KEYS, LANCZOS3_KEYS };
-export const __kernelInternals = { clampByte };

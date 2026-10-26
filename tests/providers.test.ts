@@ -205,6 +205,19 @@ describe('imgly provider (mocked module)', () => {
     expect(loadModule).toHaveBeenCalledOnce();
   });
 
+  it('returns a scaled mask when the model runs at a different resolution', async () => {
+    // A 1x1 cut-out for a 4x2 source: the provider must produce a mask instead.
+    const tinyCutout = await nodeBackend.encode(createImage(1, 1, [0, 0, 0, 0]), { type: 'image/png' });
+    const provider = createImglyProvider({ loadModule: async () => ({ removeBackground: async () => tinyCutout }) });
+    const result = await provider.remove(createImage(4, 2, [1, 2, 3, 255]));
+    expect(result.width).toBe(1);
+    expect(result.height).toBe(1);
+    expect(result.data.length).toBe(1); // single channel mask
+    // Applied through the pipeline it removes the whole background.
+    const out = await processImage(createImage(4, 2, [1, 2, 3, 255])).removeBackground(provider).toRaw();
+    expect(out.data[3]).toBe(0);
+  });
+
   it('surfaces model failures as PROVIDER_FAILED', async () => {
     const provider = createImglyProvider({
       loadModule: async () => ({

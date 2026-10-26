@@ -120,12 +120,18 @@ export function createImglyProvider(options: ImglyProviderOptions = {}): Backgro
       }
       throwIfAborted(signal);
       const decoded = await fromBlob(output);
-      // Some versions return the subject on a transparent background at the same
-      // size; guard against a resize by mapping the alpha back onto the source.
+      // Most builds return the subject on a transparent background at the same
+      // size, in which case the cut-out *is* the answer. If the model ran at a
+      // different resolution, return an alpha-only mask so the pipeline can map
+      // it back onto the original image without resampling the colours.
       if (decoded.width === image.width && decoded.height === image.height) return decoded;
-      const mask: MaskImage = { width: decoded.width, height: decoded.height, data: new Uint8ClampedArray(decoded.width * decoded.height) };
+      const mask: MaskImage = {
+        width: decoded.width,
+        height: decoded.height,
+        data: new Uint8ClampedArray(decoded.width * decoded.height),
+      };
       for (let p = 0; p < mask.data.length; p++) mask.data[p] = decoded.data[p * 4 + 3];
-      return { width: decoded.width, height: decoded.width, data: decoded.data };
+      return mask;
     },
   };
 }

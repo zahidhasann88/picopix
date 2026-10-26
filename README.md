@@ -507,6 +507,12 @@ Chunk very large images (or tile them yourself) if that matters.
 | Tree-shaking | esbuild bundle assertion that the `pixels` entry contains no canvas/codec code |
 | ML adapters | **Mocked** dynamic imports (imgly + transformers.js); no real model executed |
 
+`npm run test:browser` needs the Playwright browser binary
+(`npx playwright install chromium`, plus `--with-deps` on a bare Linux box); it is
+not downloaded as part of this npm package. `tests/worker.thread.test.ts` needs
+`dist/`, so it skips (rather than fails) when you run `npm test` before
+`npm run build`.
+
 ## API summary
 
 ```ts
