@@ -13,7 +13,7 @@ export interface BackgroundRemovalOptions {
 /**
  * A pluggable "remove the background" implementation.
  *
- * Providers live in **your** bundle, not in this library: `image-tools-core` only
+ * Providers live in **your** bundle, not in this library: `picopix` only
  * defines the contract, so heavy ML (ONNX Runtime Web, transformers.js,
  * `@imgly/background-removal`, a server round trip…) stays out of the core.
  *

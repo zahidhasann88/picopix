@@ -1,5 +1,5 @@
 /**
- * `image-tools-core/providers/imgly` — adapter for
+ * `picopix/providers/imgly` — adapter for
  * [`@imgly/background-removal`](https://www.npmjs.com/package/@imgly/background-removal).
  *
  * `@imgly/background-removal` is an **optional peer dependency** and is loaded
@@ -7,14 +7,14 @@
  * use it pay nothing.
  *
  * ```ts
- * import { createImglyProvider } from 'image-tools-core/providers/imgly';
+ * import { createImglyProvider } from 'picopix/providers/imgly';
  * const provider = createImglyProvider(); // no model is downloaded until first use
  * const blob = await processImage(file).removeBackground(provider).toBlob();
  * ```
  *
  * Note: this provider must run where it was created (models are not
  * serialisable), i.e. on the main thread or *inside* a worker you created
- * yourself — it is never shipped to `image-tools-core/worker`.
+ * yourself — it is never shipped to `picopix/worker`.
  */
 import { ImageToolsError, invalidArgument, throwIfAborted } from '../errors';
 import type { MaskImage, RawImage } from '../types';

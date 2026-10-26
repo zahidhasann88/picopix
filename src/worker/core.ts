@@ -180,7 +180,7 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
   };
 }
 
-/** Wires a core to a worker global scope (`self`) — used by the `image-tools-core/worker` entry. */
+/** Wires a core to a worker global scope (`self`) — used by the `picopix/worker` entry. */
 export function serveWorkerScope(scope: WorkerMessagePort, options: WorkerCoreOptions = {}): WorkerCore {
   const core = createWorkerCore(scope, options);
   const listener = (event: { data: unknown }): void => {

@@ -1,11 +1,11 @@
-# image-tools-core
+# picopix
 
 **Tiny, typed, tree-shakeable, browser-first image processing.** Resize, crop,
 rotate, fix EXIF orientation, compress to a byte budget, convert formats, apply
 filters, strip metadata — with Web Worker offloading and pluggable interfaces so
 heavy ML (background removal, upscaling) lives in *your* bundle, not in this one.
 
-- 🪶 **Small**: `image-tools-core/pixels` is ~7.8 KB gzipped, the full entry
+- 🪶 **Small**: `picopix/pixels` is ~7.8 KB gzipped, the full entry
   ~20 KB gzipped. `sideEffects: false`, named ESM exports, subpath imports.
 - 🧮 **Pure where it matters**: every pixel function is a plain function over a
   `RawImage` (`{ width, height, data: Uint8ClampedArray }`) — no DOM, no canvas,
@@ -27,7 +27,7 @@ heavy ML (background removal, upscaling) lives in *your* bundle, not in this one
 ## Install
 
 ```bash
-npm i image-tools-core
+npm i picopix
 
 # optional, depending on what you need
 npm i @napi-rs/canvas                 # Node canvas backend
@@ -43,7 +43,7 @@ Requires Node >= 18 (dev/build) and a browser with `OffscreenCanvas` or
 ## Quick start (20 lines)
 
 ```ts
-import { processImage, getImageInfo } from 'image-tools-core';
+import { processImage, getImageInfo } from 'picopix';
 
 const file = document.querySelector('input[type=file]').files[0];
 
@@ -74,7 +74,7 @@ string, or an already-decoded `RawImage`. Steps are recorded, not executed —
 nothing is decoded until you await a terminal method.
 
 ```ts
-import { processImage } from 'image-tools-core';
+import { processImage } from 'picopix';
 
 const blob = await processImage(file)
   .orient()                                    // EXIF orientation (auto)
@@ -127,7 +127,7 @@ Every async API in the library accepts `{ signal?: AbortSignal, onProgress?:
 import {
   resizeImage, convertImage, compressImage, cropToAspect,
   generateThumbnail, stripMetadata, getImageInfo,
-} from 'image-tools-core';
+} from 'picopix';
 
 await resizeImage(file, { width: 800, fit: 'inside', format: 'webp' }); // Blob
 await convertImage(file, 'avif', { quality: 0.6 });                    // Blob
@@ -147,7 +147,7 @@ GIF, AVIF, BMP, ICO, SVG.
 ## Compress to a target size
 
 ```ts
-import { compressImage } from 'image-tools-core';
+import { compressImage } from 'picopix';
 
 const blob = await compressImage(file, {
   maxSizeKB: 150,       // target budget (1 KB = 1024 bytes)
@@ -205,7 +205,7 @@ matters for big resizes (a 12 MPix lanczos3 downscale is ~600 ms of CPU that
 would otherwise jank the main thread).
 
 ```ts
-import { createImageWorker } from 'image-tools-core';
+import { createImageWorker } from 'picopix';
 
 const worker = createImageWorker();               // lazily created
 
@@ -255,7 +255,7 @@ a single huge resize cannot be interrupted mid-kernel.
 import.meta.url)` pattern used by the default worker factory:
 
 ```ts
-import { createImageWorker } from 'image-tools-core';
+import { createImageWorker } from 'picopix';
 const worker = createImageWorker();          // resolves dist/worker.js automatically
 
 // or point it at your own copy:
@@ -266,16 +266,16 @@ const custom = createImageWorker({ workerUrl: new URL('./image-worker.ts', impor
 default):
 
 ```ts
-const worker = createImageWorker({ workerUrl: new URL('image-tools-core/worker', import.meta.url) });
+const worker = createImageWorker({ workerUrl: new URL('picopix/worker', import.meta.url) });
 ```
 
-**Plain ESM / no bundler** — serve `node_modules/image-tools-core/dist/` and pass
+**Plain ESM / no bundler** — serve `node_modules/picopix/dist/` and pass
 an explicit URL:
 
 ```html
 <script type="module">
-  import { createImageWorker } from '/node_modules/image-tools-core/dist/index.js';
-  const worker = createImageWorker({ workerUrl: '/node_modules/image-tools-core/dist/worker.js' });
+  import { createImageWorker } from '/node_modules/picopix/dist/index.js';
+  const worker = createImageWorker({ workerUrl: '/node_modules/picopix/dist/worker.js' });
 </script>
 ```
 
@@ -295,7 +295,7 @@ The core ships *interfaces*, never models:
 ```ts
 import type {
   BackgroundRemovalProvider, UpscaleProvider,
-} from 'image-tools-core';
+} from 'picopix';
 
 interface BackgroundRemovalProvider {
   name: string;
@@ -311,7 +311,7 @@ interface UpscaleProvider {
 
 **Providers always run on the thread that created them.** Model sessions (ONNX
 Runtime Web, transformers.js, imgly's worker pool) are not structured-cloneable,
-so they cannot be sent to `image-tools-core/worker`. Pixel work around a provider
+so they cannot be sent to `picopix/worker`. Pixel work around a provider
 call still runs wherever you configured (`{ worker }` in the pipeline).
 
 ### What is actually implemented here
@@ -320,15 +320,15 @@ call still runs wherever you configured (`{ worker }` in the pipeline).
 | --- | --- |
 | `chromaKeyProvider({ color, tolerance, feather, chromaSpace })` | **Fully implemented and tested** — a model-free keyer with YCbCr chroma distance, smoothstep feathering and optional spill suppression. Fine for green screens, flat studio backdrops, scanned paper. |
 | `createMaskProvider(fn)` / `createUpscaleProvider(fn)` | **Implemented and tested** — wrap any function (your own ONNX session, a server round trip) into a provider. |
-| `image-tools-core/providers/imgly` | Adapter **tested with a mocked module**. `@imgly/background-removal` is an optional peer, dynamically imported on first use; nothing is downloaded here, so no real end-to-end model run happens in this repo's CI. |
-| `image-tools-core/providers/transformers` | Adapter **tested with a mocked pipeline**. Same story: `@huggingface/transformers` `image-segmentation` runs are simulated with fake segmentation results (`maskFromSegmentation` merging, thresholding, inversion and error paths are all covered). |
+| `picopix/providers/imgly` | Adapter **tested with a mocked module**. `@imgly/background-removal` is an optional peer, dynamically imported on first use; nothing is downloaded here, so no real end-to-end model run happens in this repo's CI. |
+| `picopix/providers/transformers` | Adapter **tested with a mocked pipeline**. Same story: `@huggingface/transformers` `image-segmentation` runs are simulated with fake segmentation results (`maskFromSegmentation` merging, thresholding, inversion and error paths are all covered). |
 
 If you need a real end-to-end ML verification, run the two adapters in your own
 app with the peer installed:
 
 ```ts
-import { processImage } from 'image-tools-core';
-import { createImglyProvider } from 'image-tools-core/providers/imgly';
+import { processImage } from 'picopix';
+import { createImglyProvider } from 'picopix/providers/imgly';
 
 const provider = createImglyProvider({ model: 'isnet_fp16', device: 'gpu' });
 const png = await processImage(file).removeBackground(provider).toFormat('png').toBlob();
@@ -340,17 +340,17 @@ const png = await processImage(file).removeBackground(provider).toFormat('png').
 
 `@napi-rs/canvas` is an **optional peer dependency** (native addon, prebuilt
 binaries). Register it explicitly — with `sideEffects: false`, a bare
-`import 'image-tools-core/node'` may be dropped by your bundler:
+`import 'picopix/node'` may be dropped by your bundler:
 
 ```ts
-import { setBackend } from 'image-tools-core';
-import { nodeBackend, isNodeBackendAvailable } from 'image-tools-core/node';
+import { setBackend } from 'picopix';
+import { nodeBackend, isNodeBackendAvailable } from 'picopix/node';
 import { readFile, writeFile } from 'node:fs/promises';
 
 if (!(await isNodeBackendAvailable())) throw new Error('npm i @napi-rs/canvas');
 setBackend(nodeBackend);
 
-const { processImage } = await import('image-tools-core');
+const { processImage } = await import('picopix');
 const input = await readFile('photo.jpg');
 const out = await processImage(input)
   .orient()
@@ -361,7 +361,7 @@ const out = await processImage(input)
 await writeFile('photo.webp', Buffer.from(out));
 ```
 
-`image-tools-core/node` also exports `useNodeBackend()` (async convenience) and
+`picopix/node` also exports `useNodeBackend()` (async convenience) and
 the lower-level `decodeNode` / `encodeNode`. Encoding support in Node:
 **PNG, JPEG, WebP, AVIF** (AVIF through skia). Decoding: PNG, JPEG, WebP, GIF,
 AVIF, BMP, ICO, SVG.
@@ -372,17 +372,17 @@ AVIF, BMP, ICO, SVG.
 
 | Subpath | Contents | Min+gzip |
 | --- | --- | --- |
-| `image-tools-core` | pipeline, helpers, codecs, metadata, providers, worker client | 20.4 KB / 18.0 KB brotli |
-| `image-tools-core/pixels` | **pure** pixel functions only (no canvas, no codec) | 7.8 KB / 6.8 KB brotli |
-| `image-tools-core/node` | Node backend (`@napi-rs/canvas`) + everything | 21.3 KB / 18.6 KB brotli |
-| `image-tools-core/worker` | worker entry (module worker) | 11.8 KB / 10.5 KB brotli |
-| `image-tools-core/providers/imgly` | imgly adapter | 2.8 KB / 2.5 KB brotli |
-| `image-tools-core/providers/transformers` | transformers.js adapter | 3.2 KB / 2.8 KB brotli |
+| `picopix` | pipeline, helpers, codecs, metadata, providers, worker client | 20.4 KB / 18.0 KB brotli |
+| `picopix/pixels` | **pure** pixel functions only (no canvas, no codec) | 7.8 KB / 6.8 KB brotli |
+| `picopix/node` | Node backend (`@napi-rs/canvas`) + everything | 21.3 KB / 18.6 KB brotli |
+| `picopix/worker` | worker entry (module worker) | 11.8 KB / 10.5 KB brotli |
+| `picopix/providers/imgly` | imgly adapter | 2.8 KB / 2.5 KB brotli |
+| `picopix/providers/transformers` | transformers.js adapter | 3.2 KB / 2.8 KB brotli |
 
 ```ts
 // Only pulled in what you import:
-import { resize } from 'image-tools-core/pixels';        // zero canvas code
-import { processImage } from 'image-tools-core';         // full pipeline
+import { resize } from 'picopix/pixels';        // zero canvas code
+import { processImage } from 'picopix';         // full pipeline
 ```
 
 `sideEffects: false` and named ESM exports mean a bundle that imports only
@@ -516,7 +516,7 @@ not downloaded as part of this npm package. `tests/worker.thread.test.ts` needs
 ## API summary
 
 ```ts
-// pixels (image-tools-core/pixels)
+// pixels (picopix/pixels)
 resize, resizeWithKernel, resizeNearest, resizeTo, computeFitSize, computeTaps,
 coverCropRect, aspectCropRect, containScale, coverScale, centerOffset, isEnlargement,
 crop, rotate, rotate90, rotate180, rotate270, flip, flipX, flipY, applyOrientation,
@@ -558,4 +558,4 @@ ImageToolsErrorCode
 
 ## License
 
-MIT © 2026 image-tools-core contributors
+MIT © 2026 picopix contributors

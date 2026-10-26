@@ -65,7 +65,7 @@ const hasWorkerGlobal = (): boolean =>
   typeof Worker !== 'undefined' && typeof URL !== 'undefined';
 
 /**
- * Creates a client for the `image-tools-core/worker` bundle.
+ * Creates a client for the `picopix/worker` bundle.
  *
  * ```ts
  * const worker = createImageWorker();
@@ -308,7 +308,7 @@ async function toArrayBuffer(input: Blob | ArrayBuffer | Uint8Array): Promise<Ar
 
 function defaultWorkerFactory(workerUrl?: string | URL): Worker {
   const url = workerUrl ?? new URL('./worker.js', import.meta.url);
-  return new Worker(url, { type: 'module', name: 'image-tools-core' });
+  return new Worker(url, { type: 'module', name: 'picopix' });
 }
 
 function resolveMode(options: ImageWorkerOptions): 'worker' | 'fallback' {

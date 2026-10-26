@@ -1,5 +1,5 @@
 /**
- * `image-tools-core/providers/transformers` — adapter for
+ * `picopix/providers/transformers` — adapter for
  * [`@huggingface/transformers`](https://www.npmjs.com/package/@huggingface/transformers)
  * image segmentation (`pipeline('image-segmentation', model)`).
  *
@@ -8,7 +8,7 @@
  * supports, e.g. `Xenova/modnet`, `briaai/RMBG-1.4`, `onnx-community/BiRefNet-ONNX`.
  *
  * ```ts
- * import { createTransformersProvider } from 'image-tools-core/providers/transformers';
+ * import { createTransformersProvider } from 'picopix/providers/transformers';
  * const provider = createTransformersProvider({ model: 'Xenova/modnet' });
  * const blob = await processImage(file).removeBackground(provider).toBlob();
  * ```

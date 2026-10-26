@@ -1,6 +1,6 @@
 # Vanilla Vite demo
 
-A single-page demo of `image-tools-core`: drop an image, and it is oriented,
+A single-page demo of `picopix`: drop an image, and it is oriented,
 resized, converted and compressed to a byte budget — with the pixel work running
 in a Web Worker. Before/after dimensions and file sizes are shown side by side.
 
@@ -10,7 +10,7 @@ depends on the parent package via `file:../..`.
 ## Run it
 
 ```bash
-cd image-tools-core        # repository root
+cd picopix        # repository root
 npm install
 npm run build              # the demo consumes the built package
 

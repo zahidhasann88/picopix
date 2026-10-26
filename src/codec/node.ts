@@ -178,7 +178,7 @@ const nodeEncodeSupport = new Map<string, boolean>();
 /**
  * Node canvas backend built on the optional peer `@napi-rs/canvas`.
  *
- * Import it from `image-tools-core/node` (which also registers it as the
+ * Import it from `picopix/node` (which also registers it as the
  * auto-detected backend in Node). Encoding supports png/jpeg/webp/avif; there is
  * no gif encoder.
  */

@@ -53,8 +53,8 @@ export function normalizeMime(type: string): string {
  * Backend state lives on a `Symbol.for()`-keyed global.
  *
  * This is not over-engineering: because every entry point is bundled
- * independently (no code splitting for CJS), `image-tools-core` and
- * `image-tools-core/node` would otherwise each own a *separate* copy of this
+ * independently (no code splitting for CJS), `picopix` and
+ * `picopix/node` would otherwise each own a *separate* copy of this
  * module state, and `setBackend()` in one entry would be invisible to the other.
  * A process-wide registry also makes the ESM+CJS dual-package hazard harmless.
  */
@@ -64,7 +64,7 @@ interface BackendRegistry {
   asyncDetectors: Array<() => Promise<CanvasBackend | null>>;
 }
 
-const REGISTRY_KEY = Symbol.for('image-tools-core.backend-registry.v1');
+const REGISTRY_KEY = Symbol.for('picopix.backend-registry.v1');
 
 function registry(): BackendRegistry {
   const host = globalThis as unknown as Record<symbol, BackendRegistry | undefined>;
@@ -95,7 +95,7 @@ export function getDefaultBackend(): CanvasBackend {
   if (!detected) {
     throw backendUnavailable(
       'No canvas backend available. In a browser use a window with OffscreenCanvas/HTMLCanvasElement; ' +
-        'in Node install the optional peer `@napi-rs/canvas` and import `image-tools-core/node`, ' +
+        'in Node install the optional peer `@napi-rs/canvas` and import `picopix/node`, ' +
         'or call setBackend() with your own implementation.',
     );
   }
@@ -160,7 +160,7 @@ export async function getBackend(): Promise<CanvasBackend> {
   }
   throw backendUnavailable(
     'No canvas backend available. In a browser use a window with OffscreenCanvas/HTMLCanvasElement; ' +
-      'in Node install the optional peer `@napi-rs/canvas` and import `image-tools-core/node`, ' +
+      'in Node install the optional peer `@napi-rs/canvas` and import `picopix/node`, ' +
       'or call setBackend() with your own implementation.',
   );
 }

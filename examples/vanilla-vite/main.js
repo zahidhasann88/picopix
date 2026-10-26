@@ -1,5 +1,5 @@
 /**
- * Vanilla Vite demo for `image-tools-core`.
+ * Vanilla Vite demo for `picopix`.
  *
  * Drop an image -> it is decoded, oriented, resized, converted and compressed to
  * a byte budget, with all pixel work offloaded to a Web Worker. The before/after
@@ -14,7 +14,7 @@ import {
   compressImage,
   getImageInfo,
   stripMetadata,
-} from 'image-tools-core';
+} from 'picopix';
 
 const els = {
   dropzone: document.getElementById('dropzone'),

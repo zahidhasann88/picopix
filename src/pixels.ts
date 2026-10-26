@@ -1,5 +1,5 @@
 /**
- * `image-tools-core/pixels` — pure, DOM-free pixel functions.
+ * `picopix/pixels` — pure, DOM-free pixel functions.
  *
  * Importing from this subpath pulls in **zero** canvas/codec/browser code: the
  * bundle only contains arithmetic on typed arrays (verified by

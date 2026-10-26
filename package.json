@@ -1,5 +1,5 @@
 {
-  "name": "image-tools-core",
+  "name": "picopix",
   "version": "0.1.0",
   "description": "Tiny, typed, tree-shakeable, browser-first image processing core: resize, crop, rotate, EXIF orientation, compress, convert, filters, metadata strip, Web Worker offloading and pluggable ML provider interfaces.",
   "keywords": [
@@ -16,10 +16,16 @@
     "tree-shakeable",
     "typescript",
     "background-removal",
-    "upscale"
+    "upscale",
+    "image-processing",
+    "browser",
+    "pixel",
+    "offscreen-canvas",
+    "napi-rs",
+    "tiny"
   ],
   "license": "MIT",
-  "author": "image-tools-core contributors",
+  "author": "picopix contributors",
   "type": "module",
   "sideEffects": false,
   "engines": {

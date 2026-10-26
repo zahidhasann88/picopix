@@ -188,7 +188,7 @@ export function makePngWithMetadata(options: ExifFixtureOptions = {}): {
   }
   const extra = [
     textChunk('Comment', 'hello from the test suite'),
-    textChunk('Software', 'image-tools-core'),
+    textChunk('Software', 'picopix'),
     itxtChunk('Description', 'international text'),
     ztxtChunk('Compressed'),
     pngChunk('eXIf', buildTiffForPng(options)),

@@ -1,5 +1,5 @@
 /**
- * `image-tools-core/worker` — the worker entry point.
+ * `picopix/worker` — the worker entry point.
  *
  * Import this file from a `new Worker(..., { type: 'module' })` call; it wires
  * the message handler to the worker global scope. It is a separate bundle so the

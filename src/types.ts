@@ -1,5 +1,5 @@
 /**
- * Public type surface for `image-tools-core`.
+ * Public type surface for `picopix`.
  *
  * Everything in this file is type-only (no runtime code) so it can be imported
  * from any subpath without pulling in an implementation.

@@ -10,7 +10,7 @@ First public release.
 
 ### Added
 
-- **Pixels layer** (`image-tools-core/pixels`), pure and DOM-free:
+- **Pixels layer** (`picopix/pixels`), pure and DOM-free:
   - `resize` with `nearest`, `bilinear`, `catmull-rom` and `lanczos3` kernels,
     separable filtering in premultiplied alpha, anti-aliased downscaling
     (widened kernel) and `contain`/`cover`/`fill`/`inside`/`outside` fit modes.
@@ -27,7 +27,7 @@ First public release.
 - **Codec layer**: `CanvasBackend` interface, `browserBackend`
   (`createImageBitmap` + `OffscreenCanvas`, `HTMLCanvasElement` fallback),
   `nodeBackend` (`@napi-rs/canvas`, optional peer, exported from
-  `image-tools-core/node`), `getDefaultBackend`, `setBackend`, `canEncode`.
+  `picopix/node`), `getDefaultBackend`, `setBackend`, `canEncode`.
 - **Metadata**: dependency-free EXIF parser (orientation, Make, Model, DateTime,
   DateTimeOriginal, GPS-present flag, raw IFD0 tags), magic-byte format sniffing
   for PNG/JPEG/WebP/GIF/AVIF/BMP/ICO/SVG, `getImageInfo`, and **lossless**
@@ -39,12 +39,12 @@ First public release.
 - **Web Workers**: `createImageWorker()` client with a serialisable ops-list
   protocol, request ids, transferable buffers, `AbortSignal` cancellation,
   timeouts, main-thread fallback, and `createWorkerPool({ size })`. The worker
-  entry is a separate `image-tools-core/worker` bundle.
+  entry is a separate `picopix/worker` bundle.
 - **Providers**: `BackgroundRemovalProvider` / `UpscaleProvider` interfaces,
   `createMaskProvider`, `createUpscaleProvider`, a fully implemented model-free
   `chromaKeyProvider`, and thin adapters for `@imgly/background-removal`
-  (`image-tools-core/providers/imgly`) and `@huggingface/transformers`
-  (`image-tools-core/providers/transformers`).
+  (`picopix/providers/imgly`) and `@huggingface/transformers`
+  (`picopix/providers/transformers`).
 - **Errors**: `ImageToolsError` with stable codes (`UNSUPPORTED_FORMAT`,
   `DECODE_FAILED`, `ENCODE_FAILED`, `ABORTED`, `TIMEOUT`, `BACKEND_UNAVAILABLE`,
   `INVALID_ARGUMENT`, `PROVIDER_FAILED`), plus `AbortError` and `TimeoutError`.

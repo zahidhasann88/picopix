@@ -1,9 +1,9 @@
 /**
- * `image-tools-core` — browser-first, tree-shakeable image processing core.
+ * `picopix` — browser-first, tree-shakeable image processing core.
  *
  * The main entry re-exports the pipeline API, the one-shot helpers, the codec
  * layer, metadata utilities and the provider interfaces. Pure pixel functions
- * live in `image-tools-core/pixels` so that a bundle which only needs `resize`
+ * live in `picopix/pixels` so that a bundle which only needs `resize`
  * never sees a `Uint8Array`-to-canvas code path (verified in CI by
  * `tests/treeshake.test.ts`).
  */
@@ -101,7 +101,7 @@ export type {
   UpscaleProviderFn,
 } from './providers/types';
 
-// --- worker (client side only; the worker bundle is `image-tools-core/worker`) -
+// --- worker (client side only; the worker bundle is `picopix/worker`) -
 export {
   createImageWorker,
   createWorkerPool,

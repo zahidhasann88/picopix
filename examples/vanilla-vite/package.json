@@ -1,5 +1,5 @@
 {
-  "name": "image-tools-core-demo",
+  "name": "picopix-demo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "image-tools-core": "file:../.."
+    "picopix": "file:../.."
   },
   "devDependencies": {
     "vite": "^5.4.0"

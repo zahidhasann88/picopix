@@ -1,12 +1,12 @@
 /**
- * `image-tools-core/node` — Node.js entry point.
+ * `picopix/node` — Node.js entry point.
  *
  * Import this once (even for its side effects) to register the
  * `@napi-rs/canvas` backend as the default:
  *
  * ```ts
- * import 'image-tools-core/node';
- * import { compressImage } from 'image-tools-core';
+ * import 'picopix/node';
+ * import { compressImage } from 'picopix';
  * ```
  *
  * `@napi-rs/canvas` is an **optional peer dependency**; if it is missing, the

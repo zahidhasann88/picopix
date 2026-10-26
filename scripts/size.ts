@@ -12,10 +12,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const entries: Array<{ name: string; path: string }> = [
-  { name: 'image-tools-core', path: 'src/index.ts' },
-  { name: 'image-tools-core/pixels', path: 'src/pixels.ts' },
-  { name: 'image-tools-core/worker', path: 'src/worker.ts' },
-  { name: 'image-tools-core/node', path: 'src/node.ts' },
+  { name: 'picopix', path: 'src/index.ts' },
+  { name: 'picopix/pixels', path: 'src/pixels.ts' },
+  { name: 'picopix/worker', path: 'src/worker.ts' },
+  { name: 'picopix/node', path: 'src/node.ts' },
   { name: 'providers/imgly', path: 'src/providers/imgly.ts' },
   { name: 'providers/transformers', path: 'src/providers/transformers.ts' },
 ];

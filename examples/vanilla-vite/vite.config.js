@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 /**
- * `image-tools-core` ships its worker as a separate ESM bundle and creates it
+ * `picopix` ships its worker as a separate ESM bundle and creates it
  * with `new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })`.
  * Vite understands that pattern natively, so no special worker configuration is
  * needed here — this file only sets the dev server port and enables the
