@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and pack only (do not publish to npm)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    name: verify, pack and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      - name: Check that package.json, tag and CHANGELOG agree
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "package.json version: $PKG_VERSION"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            echo "tag version: $TAG"
+            test "$PKG_VERSION" = "$TAG" || { echo "::error::tag v$TAG does not match package version $PKG_VERSION"; exit 1; }
+          fi
+          grep -q "## \[$PKG_VERSION\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no [${PKG_VERSION}] section"; exit 1; }
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Worker thread tests against the build
+        run: npx vitest run tests/worker.thread.test.ts
+
+      - name: Install Chromium and run real browser checks
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser
+
+      - name: Pack
+        run: npm pack
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: '*.tgz'
+          if-no-files-found: error
+
+      - name: Publish to npm
+        if: github.ref_type == 'tag' && (github.event.inputs.dry_run == '' || github.event.inputs.dry_run == 'false')
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: '*.tgz'
+          body_path: CHANGELOG.md

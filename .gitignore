@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.bench/
+*.tgz
+*.log
+.DS_Store
+.vite/
+examples/**/dist/
+examples/**/node_modules/
+examples/**/package-lock.json

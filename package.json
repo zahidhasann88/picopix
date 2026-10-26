@@ -1,0 +1,130 @@
+{
+  "name": "image-tools-core",
+  "version": "0.1.0",
+  "description": "Tiny, typed, tree-shakeable, browser-first image processing core: resize, crop, rotate, EXIF orientation, compress, convert, filters, metadata strip, Web Worker offloading and pluggable ML provider interfaces.",
+  "keywords": [
+    "image",
+    "resize",
+    "crop",
+    "rotate",
+    "exif",
+    "compress",
+    "webp",
+    "avif",
+    "canvas",
+    "web-worker",
+    "tree-shakeable",
+    "typescript",
+    "background-removal",
+    "upscale"
+  ],
+  "license": "MIT",
+  "author": "image-tools-core contributors",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./pixels": {
+      "types": "./dist/pixels.d.ts",
+      "import": "./dist/pixels.js",
+      "require": "./dist/pixels.cjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "require": "./dist/node.cjs"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js",
+      "require": "./dist/worker.cjs"
+    },
+    "./providers/imgly": {
+      "types": "./dist/providers/imgly.d.ts",
+      "import": "./dist/providers/imgly.js",
+      "require": "./dist/providers/imgly.cjs"
+    },
+    "./providers/transformers": {
+      "types": "./dist/providers/transformers.d.ts",
+      "import": "./dist/providers/transformers.js",
+      "require": "./dist/providers/transformers.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "pixels": [
+        "./dist/pixels.d.ts"
+      ],
+      "node": [
+        "./dist/node.d.ts"
+      ],
+      "worker": [
+        "./dist/worker.d.ts"
+      ],
+      "providers/imgly": [
+        "./dist/providers/imgly.d.ts"
+      ],
+      "providers/transformers": [
+        "./dist/providers/transformers.d.ts"
+      ],
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist coverage .bench",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "node scripts/browser-test.mjs",
+    "bench": "tsx scripts/bench.ts",
+    "size": "tsx scripts/size.ts",
+    "demo": "echo 'see examples/vanilla-vite (source only)'",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm test && npm run build"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": ">=3.0.0",
+    "@imgly/background-removal": ">=1.4.0",
+    "@napi-rs/canvas": ">=0.1.40"
+  },
+  "peerDependenciesMeta": {
+    "@napi-rs/canvas": {
+      "optional": true
+    },
+    "@imgly/background-removal": {
+      "optional": true
+    },
+    "@huggingface/transformers": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.65",
+    "@types/node": "^20.14.10",
+    "esbuild": "^0.24.0",
+    "playwright-core": "^1.49.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
