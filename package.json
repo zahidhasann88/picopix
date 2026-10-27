@@ -1,7 +1,7 @@
 {
   "name": "picopix",
   "version": "0.1.0",
-  "description": "Tiny, typed, tree-shakeable, browser-first image processing core: resize, crop, rotate, EXIF orientation, compress, convert, filters, metadata strip, Web Worker offloading and pluggable ML provider interfaces.",
+  "description": "Tiny, typed, tree-shakeable image processing for the browser and Node.",
   "keywords": [
     "image",
     "resize",
