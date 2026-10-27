@@ -9,7 +9,7 @@ Small, typed, tree-shakeable image processing for the browser and Node.
 - Offload work to a Web Worker or a worker pool, with cancellation.
 - Plug in your own ML background removal or upscaling.
 
-![picopix demo: an image is resized, compressed and given srcset variants and a ThumbHash placeholder in a Web Worker](docs/demo.gif)
+![picopix demo: an image is resized, compressed and given srcset variants and a ThumbHash placeholder in a Web Worker](https://raw.githubusercontent.com/zahidhasann88/picopix/main/docs/demo.gif)
 
 ## Install
 

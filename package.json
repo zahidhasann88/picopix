@@ -1,6 +1,6 @@
 {
   "name": "picopix",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tiny, typed, tree-shakeable image processing for the browser and Node.",
   "keywords": [
     "image",

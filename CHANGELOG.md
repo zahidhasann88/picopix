@@ -2,6 +2,10 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-10-27
+
+- Fix demo GIF not showing on the npm page.
+
 ## [0.1.1] — 2026-10-27
 
 - Shorter package description.
