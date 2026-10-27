@@ -5,19 +5,13 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Build and pack only (do not publish to npm)'
-        type: boolean
-        default: true
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  publish:
-    name: verify, pack and publish
+  release:
+    name: verify and create GitHub release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +24,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
@@ -71,12 +64,6 @@ jobs:
           name: npm-tarball
           path: '*.tgz'
           if-no-files-found: error
-
-      - name: Publish to npm
-        if: github.ref_type == 'tag' && (github.event.inputs.dry_run == '' || github.event.inputs.dry_run == 'false')
-        run: npm publish ./picopix-*.tgz --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub release
         if: github.ref_type == 'tag'

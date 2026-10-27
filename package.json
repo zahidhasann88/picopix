@@ -135,7 +135,7 @@
     "test:browser": "node scripts/browser-test.mjs",
     "bench": "tsx scripts/bench.ts",
     "size": "tsx scripts/size.ts",
-    "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm test && pnpm build"
+    "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm build && pnpm test"
   },
   "peerDependencies": {
     "@huggingface/transformers": ">=3.0.0",
