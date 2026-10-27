@@ -18,10 +18,11 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "declaration": true,
+    "isolatedDeclarations": true,
     "declarationMap": true,
     "sourceMap": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "scripts", "tsup.config.ts", "vitest.config.ts"],
+  "include": ["src", "tests", "scripts", "tsdown.config.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "examples"]
 }

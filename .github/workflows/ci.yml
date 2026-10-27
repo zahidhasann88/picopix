@@ -20,37 +20,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['18', '20', '22']
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Typecheck (strict, DOM lib)
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Unit + integration tests
-        run: npm test
+        run: pnpm test
 
-      - name: Build (tsup, multi-entry)
-        run: npm run build
+      - name: Build (tsdown, multi-entry)
+        run: pnpm run build
 
       - name: Worker-over-a-real-thread tests (needs dist/)
-        run: npx vitest run tests/worker.thread.test.ts
+        run: pnpm exec vitest run tests/worker.thread.test.ts
 
       - name: Benchmarks (smoke)
-        run: npm run bench
+        run: pnpm run bench
 
       - name: Bundle sizes
-        run: npm run size
+        run: pnpm run size
 
       - name: Package contents
-        run: npm pack --dry-run
+        run: pnpm pack --dry-run
 
   browser:
     name: real browser tests (chromium)
@@ -58,19 +60,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright-core install --with-deps chromium
 
       - name: Browser checks (OffscreenCanvas, module Worker, WebP encode)
-        run: npm run test:browser
+        run: pnpm run test:browser
 
   demo:
     name: example builds (vite)
@@ -78,16 +82,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
 
       - name: Build the vanilla Vite example against the built package
         working-directory: examples/vanilla-vite
         run: |
-          npm install --no-audit --no-fund
-          npx vite build
+          pnpm install --ignore-workspace
+          pnpm exec vite build

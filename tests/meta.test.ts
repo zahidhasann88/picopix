@@ -184,7 +184,6 @@ describe('lossless metadata stripping', () => {
       return new Uint8Array(0);
     };
     expect(Array.from(scanOf(stripped))).toEqual(Array.from(scanOf(jpeg)));
-    // And it is still a valid JPEG according to the sniffer.
     expect(sniffFormat(stripped)).toBe('jpeg');
   });
 
@@ -224,7 +223,6 @@ describe('lossless metadata stripping', () => {
     expect(after).toContain('IHDR');
     expect(after).toContain('IDAT');
     expect(after).toContain('IEND');
-    // The IDAT payload is copied verbatim.
     const idatOf = (bytes: Uint8Array): number[] => {
       const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
       let i = 8;

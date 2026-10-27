@@ -11,9 +11,9 @@ const entry = join(here, 'helpers', 'worker-thread-entry.mjs');
 const distWorker = join(here, '..', 'dist', 'worker.js');
 
 /**
- * These tests need `dist/worker.js`, so they only run after `npm run build`.
- * `npm test` runs before the build in CI, so the suite skips rather than fails —
- * `npm run prepublishOnly` and the CI "verify build" job run them for real.
+ * These tests need `dist/worker.js`, so they only run after `pnpm build`.
+ * `pnpm test` runs before the build in CI, so the suite skips rather than fails —
+ * `pnpm prepublishOnly` and the CI "verify build" job run them for real.
  */
 const built = existsSync(distWorker);
 

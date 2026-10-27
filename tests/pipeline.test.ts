@@ -131,6 +131,15 @@ describe('pipeline API', () => {
     expect(blob.type).toBe('image/png');
   });
 
+  it('re-encodes formats it cannot write (SVG) as PNG instead of throwing', async () => {
+    const svg = new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="2"><rect width="4" height="2" fill="red"/></svg>',
+    );
+    const blob = await processImage(svg).toBlob();
+    expect(blob.type).toBe('image/png');
+    await expect(processImage(svg).toFormat('gif').toBlob()).rejects.toMatchObject({ code: 'UNSUPPORTED_FORMAT' });
+  });
+
   it('produces ArrayBuffer, data URL and object URL output', async () => {
     const pipeline = processImage(makePng(16, 16));
     const buffer = await pipeline.toArrayBuffer();

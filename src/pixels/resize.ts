@@ -1,21 +1,15 @@
-import { invalidArgument } from '../errors';
-import type { RawImage, ResizeKernel, ResizeOptions } from '../types';
-import { assertImage, fromPremultiplied, toPremultiplied } from './util';
-import { computeFitSize, coverCropRect } from './fit';
-import { crop } from './transform';
+import { invalidArgument } from "../errors";
+import type { RawImage, ResizeKernel, ResizeOptions } from "../types";
+import { assertImage, fromPremultiplied, toPremultiplied } from "./util";
+import { computeFitSize, coverCropRect } from "./fit";
+import { crop } from "./transform";
 
-/** Kernel support radius in *source* pixels (before any downscale widening). */
-const KERNEL_SUPPORT: Record<Exclude<ResizeKernel, 'nearest'>, number> = {
+const KERNEL_SUPPORT: Record<Exclude<ResizeKernel, "nearest">, number> = {
   bilinear: 1,
-  'catmull-rom': 2,
+  "catmull-rom": 2,
   lanczos3: 3,
 };
 
-/**
- * Taps used for one output pixel.
- * - `first` is the index of the first contributing source pixel.
- * - `weights` holds normalised weights for `first .. first + weights.length - 1`.
- */
 export interface ResampleTaps {
   first: number;
   weights: Float64Array;
@@ -43,13 +37,13 @@ function lanczos3Fn(x: number): number {
   return (3 * Math.sin(px) * Math.sin(px / 3)) / (px * px);
 }
 
-function kernelFn(kernel: Exclude<ResizeKernel, 'nearest'>): KernelFn {
+function kernelFn(kernel: Exclude<ResizeKernel, "nearest">): KernelFn {
   switch (kernel) {
-    case 'bilinear':
+    case "bilinear":
       return bilinearFn;
-    case 'catmull-rom':
+    case "catmull-rom":
       return catmullRomFn;
-    case 'lanczos3':
+    case "lanczos3":
       return lanczos3Fn;
   }
 }
@@ -69,7 +63,7 @@ function kernelFn(kernel: Exclude<ResizeKernel, 'nearest'>): KernelFn {
 export function computeTaps(
   srcSize: number,
   dstSize: number,
-  kernel: Exclude<ResizeKernel, 'nearest'>,
+  kernel: Exclude<ResizeKernel, "nearest">,
   antialias = true,
 ): ResampleTaps[] {
   const scale = dstSize / srcSize;
@@ -79,7 +73,6 @@ export function computeTaps(
   const taps: ResampleTaps[] = new Array(dstSize);
 
   for (let d = 0; d < dstSize; d++) {
-    // Centre of output pixel `d` mapped into source coordinates.
     const center = (d + 0.5) / scale;
     const lo = Math.floor(center - support + 0.5);
     const hi = Math.ceil(center + support - 0.5);
@@ -96,7 +89,6 @@ export function computeTaps(
     if (sum !== 0) {
       for (let t = 0; t < count; t++) weights[t] /= sum;
     } else {
-      // Degenerate (should not happen): fall back to nearest neighbour.
       weights.fill(0);
       weights[Math.min(count - 1, Math.round(center - first - 0.5))] = 1;
     }
@@ -105,10 +97,6 @@ export function computeTaps(
   return taps;
 }
 
-/**
- * Resamples a premultiplied float image along one axis.
- * `horizontal = true` resizes width, otherwise height.
- */
 function resampleAxis(
   src: Float32Array,
   srcW: number,
@@ -136,7 +124,9 @@ function resampleAxis(
         let si = first + t;
         if (si < 0) si = 0;
         else if (si >= srcLineLen) si = srcLineLen - 1;
-        const idx = horizontal ? (other * srcW + si) * 4 : (si * srcW + other) * 4;
+        const idx = horizontal
+          ? (other * srcW + si) * 4
+          : (si * srcW + other) * 4;
         r += src[idx] * w;
         g += src[idx + 1] * w;
         b += src[idx + 2] * w;
@@ -152,8 +142,11 @@ function resampleAxis(
   return out;
 }
 
-/** Nearest-neighbour resize (premultiplied-alpha aware for consistency). */
-export function resizeNearest(image: RawImage, width: number, height: number): RawImage {
+export function resizeNearest(
+  image: RawImage,
+  width: number,
+  height: number,
+): RawImage {
   assertImage(image);
   const src = image;
   const out = new Uint8ClampedArray(width * height * 4);
@@ -181,27 +174,29 @@ export function resizeNearest(image: RawImage, width: number, height: number): R
  * The image is converted to premultiplied alpha before filtering, so
  * transparent pixels never bleed colour into their neighbours; it is converted
  * back to straight alpha at the end.
- *
- * @param image source image
- * @param target target width/height — plain numbers
- * @param kernel one of `nearest | bilinear | catmull-rom | lanczos3`
- * @param antialias widen the kernel when downscaling (default `true`)
  */
 export function resizeWithKernel(
   image: RawImage,
   target: { width: number; height: number },
-  kernel: ResizeKernel = 'lanczos3',
+  kernel: ResizeKernel = "lanczos3",
   antialias = true,
 ): RawImage {
   assertImage(image);
   const { width, height } = target;
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
-    throw invalidArgument(`resize: target size must be positive integers (got ${width}x${height})`);
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1
+  ) {
+    throw invalidArgument(
+      `resize: target size must be positive integers (got ${width}x${height})`,
+    );
   }
   if (width === image.width && height === image.height) {
     return { width, height, data: new Uint8ClampedArray(image.data) };
   }
-  if (kernel === 'nearest') return resizeNearest(image, width, height);
+  if (kernel === "nearest") return resizeNearest(image, width, height);
 
   const pre = toPremultiplied(image);
   const needX = width !== image.width;
@@ -223,33 +218,31 @@ export function resizeWithKernel(
   return fromPremultiplied(buf, width, height);
 }
 
-/**
- * The pixel-resampling entry point.
- *
- * `resize(image, number)` scales to a width, keeping the aspect ratio.
- * `resize(image, { width, height, fit, kernel })` uses the full option set; the
- * target box is reconciled with the source aspect ratio by {@link computeFitSize}
- * and, for `'contain'`/`'cover'`-style letterboxing, the result is the exact
- * box size with the background left transparent.
- */
-export function resize(image: RawImage, options: number | ResizeOptions): RawImage {
+export function resize(
+  image: RawImage,
+  options: number | ResizeOptions,
+): RawImage {
   const opts: ResizeOptions =
-    typeof options === 'number' ? { width: options } : { ...options };
-  const { width: boxW, height: boxH, fit = 'fill', kernel = 'lanczos3' } = opts;
+    typeof options === "number" ? { width: options } : { ...options };
+  const { width: boxW, height: boxH, fit = "fill", kernel = "lanczos3" } = opts;
   const withoutEnlargement = opts.withoutEnlargement ?? false;
   const antialias = opts.antialias ?? true;
 
   if (boxW === undefined && boxH === undefined) {
-    throw invalidArgument('resize: at least one of width/height is required');
+    throw invalidArgument("resize: at least one of width/height is required");
   }
   if (boxW !== undefined && (!Number.isInteger(boxW) || boxW < 1)) {
-    throw invalidArgument(`resize: width must be a positive integer (got ${boxW})`);
+    throw invalidArgument(
+      `resize: width must be a positive integer (got ${boxW})`,
+    );
   }
   if (boxH !== undefined && (!Number.isInteger(boxH) || boxH < 1)) {
-    throw invalidArgument(`resize: height must be a positive integer (got ${boxH})`);
+    throw invalidArgument(
+      `resize: height must be a positive integer (got ${boxH})`,
+    );
   }
 
-  if (fit === 'fill' || fit === 'inside' || fit === 'outside') {
+  if (fit === "fill" || fit === "inside" || fit === "outside") {
     const size = computeFitSize(image.width, image.height, {
       width: boxW,
       height: boxH,
@@ -260,25 +253,25 @@ export function resize(image: RawImage, options: number | ResizeOptions): RawIma
     return resizeWithKernel(image, size, kernel, antialias);
   }
 
-  // `contain` / `cover` are defined against an exact box: resolve it first.
   const box = computeFitSize(image.width, image.height, {
     width: boxW,
     height: boxH,
-    fit: 'fill',
+    fit: "fill",
     withoutEnlargement: false,
     round: true,
   });
 
-  if (fit === 'contain') {
+  if (fit === "contain") {
     const scaled = computeFitSize(image.width, image.height, {
       width: box.width,
       height: box.height,
-      fit: 'inside',
+      fit: "inside",
       withoutEnlargement,
       round: true,
     });
     const resized = resizeWithKernel(image, scaled, kernel, antialias);
-    if (resized.width === box.width && resized.height === box.height) return resized;
+    if (resized.width === box.width && resized.height === box.height)
+      return resized;
     const out = new Uint8ClampedArray(box.width * box.height * 4);
     const offX = Math.floor((box.width - resized.width) / 2);
     const offY = Math.floor((box.height - resized.height) / 2);
@@ -287,25 +280,31 @@ export function resize(image: RawImage, options: number | ResizeOptions): RawIma
       if (dy < 0 || dy >= box.height) continue;
       const srcStart = y * resized.width * 4;
       const dstStart = (dy * box.width + offX) * 4;
-      out.set(resized.data.subarray(srcStart, srcStart + resized.width * 4), dstStart);
+      out.set(
+        resized.data.subarray(srcStart, srcStart + resized.width * 4),
+        dstStart,
+      );
     }
     return { width: box.width, height: box.height, data: out };
   }
 
-  // cover: scale so the source covers the box, then centre-crop the overflow.
   const rect = coverCropRect(image.width, image.height, box.width, box.height);
   const cropped = crop(image, rect);
   const scaled = computeFitSize(cropped.width, cropped.height, {
     width: box.width,
     height: box.height,
-    fit: 'fill',
+    fit: "fill",
     withoutEnlargement,
     round: true,
   });
   return resizeWithKernel(cropped, scaled, kernel, antialias);
 }
 
-/** Convenience wrapper: `resizeTo(image, w, h)` is `resizeWithKernel` with defaults. */
-export function resizeTo(image: RawImage, width: number, height: number, kernel: ResizeKernel = 'lanczos3'): RawImage {
+export function resizeTo(
+  image: RawImage,
+  width: number,
+  height: number,
+  kernel: ResizeKernel = "lanczos3",
+): RawImage {
   return resizeWithKernel(image, { width, height }, kernel);
 }

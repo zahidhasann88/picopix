@@ -143,7 +143,6 @@ describe('worker core (in-process, fake port)', () => {
     expect(response.image?.width).toBe(4);
     expect(response.image?.height).toBe(4);
     expect(response.durationMs).toBeGreaterThanOrEqual(0);
-    // The result buffer is listed as transferable.
     expect(fake.log[0].transfer).toHaveLength(1);
     expect(fake.log[0].transfer[0]).toBe(response.image!.data.buffer);
   });
@@ -267,7 +266,8 @@ describe('protocol helpers', () => {
       image,
       ops: [{ op: 'applyMask', mask: { width: 2, height: 2, data: maskData } }],
     };
-    expect(requestTransferables(withMask)).toHaveLength(2);
+    // Op buffers belong to the caller (often reused) and must not be detached.
+    expect(requestTransferables(withMask)).toEqual([image.data.buffer]);
   });
 
   it('collects transferables for result responses only', () => {

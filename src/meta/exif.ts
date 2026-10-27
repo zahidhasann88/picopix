@@ -1,7 +1,6 @@
-import type { ExifData } from '../types';
+import type { ExifData } from "../types";
 
-/** Marker bytes for the start of an EXIF payload inside an APP1 segment. */
-const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00]; // 'Exif\0\0'
+const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
 
 const TAG_MAKE = 0x010f;
 const TAG_MODEL = 0x0110;
@@ -15,9 +14,7 @@ interface IfdEntry {
   tag: number;
   type: number;
   count: number;
-  /** Offset of the value relative to the start of the TIFF header. */
   valueOffset: number;
-  /** Raw inline bytes when the value fits in 4 bytes. */
   inline: boolean;
 }
 
@@ -37,7 +34,7 @@ const TYPE_SIZE: Record<number, number> = {
 };
 
 function decodeAscii(bytes: Uint8Array, start: number, length: number): string {
-  let s = '';
+  let s = "";
   for (let i = 0; i < length && start + i < bytes.length; i++) {
     const c = bytes[start + i];
     if (c === 0) break;
@@ -46,15 +43,6 @@ function decodeAscii(bytes: Uint8Array, start: number, length: number): string {
   return s;
 }
 
-/**
- * Parses a TIFF header at `tiffStart` inside `bytes` and returns IFD0 tags plus
- * the EXIF orientation, camera strings and a GPS-present flag.
- *
- * This is a small, dependency-free reader: it understands the handful of tags
- * this library exposes (orientation, Make, Model, DateTime, DateTimeOriginal and
- * the GPS pointer) and additionally collects every IFD0 tag whose value is an
- * ASCII string or a single integer into `tags`.
- */
 export function parseTiff(bytes: Uint8Array, tiffStart = 0): ExifData | null {
   if (bytes.length < tiffStart + 8) return null;
   const b0 = bytes[tiffStart];
@@ -72,7 +60,9 @@ export function parseTiff(bytes: Uint8Array, tiffStart = 0): ExifData | null {
   const ifd0Offset = u32(tiffStart + 4);
   if (!Number.isFinite(ifd0Offset)) return null;
 
-  const readIfd = (offset: number): { entries: IfdEntry[]; next: number } | null => {
+  const readIfd = (
+    offset: number,
+  ): { entries: IfdEntry[]; next: number } | null => {
     const base = tiffStart + offset;
     if (base + 2 > bytes.length) return null;
     const count = u16(base);
@@ -186,10 +176,14 @@ export function parseTiff(bytes: Uint8Array, tiffStart = 0): ExifData | null {
   return data;
 }
 
-/** Iterates JPEG segments, invoking `visit` for each marker with its payload. */
 export function forEachJpegSegment(
   bytes: Uint8Array,
-  visit: (marker: number, payload: Uint8Array, start: number, end: number) => void,
+  visit: (
+    marker: number,
+    payload: Uint8Array,
+    start: number,
+    end: number,
+  ) => void,
 ): void {
   if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return;
   let i = 2;
@@ -199,10 +193,14 @@ export function forEachJpegSegment(
     if (i >= bytes.length) break;
     const marker = bytes[i];
     i++;
-    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (
+      marker === 0xd8 ||
+      marker === 0x01 ||
+      (marker >= 0xd0 && marker <= 0xd7)
+    )
+      continue;
     if (marker === 0xd9) break;
     if (marker === 0xda) {
-      // Start of scan: entropy-coded data follows, stop segment iteration.
       visit(marker, bytes.subarray(i - 2), i - 2, bytes.length);
       break;
     }
@@ -211,13 +209,20 @@ export function forEachJpegSegment(
     if (length < 2) break;
     const start = i - 2;
     const end = start + 2 + length;
-    visit(marker, bytes.subarray(i + 2, Math.min(bytes.length, i + length)), start, end);
+    visit(
+      marker,
+      bytes.subarray(i + 2, Math.min(bytes.length, i + length)),
+      start,
+      end,
+    );
     i += length;
   }
 }
 
 /** Finds the raw `Exif\0\0…` APP1 payload of a JPEG, or `null`. */
-export function findJpegExif(bytes: Uint8Array): { tiffStart: number; length: number } | null {
+export function findJpegExif(
+  bytes: Uint8Array,
+): { tiffStart: number; length: number } | null {
   let found: { tiffStart: number; length: number } | null = null;
   forEachJpegSegment(bytes, (marker, payload, start) => {
     if (found || marker !== 0xe1 || payload.length < 6) return;
@@ -229,17 +234,12 @@ export function findJpegExif(bytes: Uint8Array): { tiffStart: number; length: nu
       }
     }
     if (isExif) {
-      // payload starts right after the 2-byte length field at `start + 4`.
       found = { tiffStart: start + 4 + 6, length: payload.length - 6 };
     }
   });
   return found;
 }
 
-/**
- * Parses EXIF metadata from a JPEG (APP1) or PNG (`eXIf` chunk) byte stream.
- * Returns `null` when there is no EXIF block. Never throws on malformed data.
- */
 export function parseExif(bytes: Uint8Array): ExifData | null {
   try {
     if (bytes.length > 8 && bytes[0] === 0xff && bytes[1] === 0xd8) {
@@ -247,16 +247,30 @@ export function parseExif(bytes: Uint8Array): ExifData | null {
       if (!exif) return null;
       return parseTiff(bytes, exif.tiffStart);
     }
-    // PNG eXIf chunk: TIFF header starts right after the 8 byte signature.
-    if (bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (
+      bytes.length > 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47
+    ) {
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength,
+      );
       let i = 8;
       while (i + 8 <= bytes.length) {
         const len = view.getUint32(i, false);
-        const type = String.fromCharCode(bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]);
+        const type = String.fromCharCode(
+          bytes[i + 4],
+          bytes[i + 5],
+          bytes[i + 6],
+          bytes[i + 7],
+        );
         const dataStart = i + 8;
-        if (type === 'eXIf') return parseTiff(bytes, dataStart);
-        if (type === 'IEND') break;
+        if (type === "eXIf") return parseTiff(bytes, dataStart);
+        if (type === "IEND") break;
         i = dataStart + len + 4;
       }
       return null;
@@ -267,7 +281,6 @@ export function parseExif(bytes: Uint8Array): ExifData | null {
   return null;
 }
 
-/** Reads the EXIF orientation (`1..8`; `1` when absent/invalid). */
 export function readOrientation(bytes: Uint8Array): number {
   return parseExif(bytes)?.orientation ?? 1;
 }

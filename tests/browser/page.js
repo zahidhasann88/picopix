@@ -21,6 +21,9 @@ import {
   sniffFormat,
   ImageToolsError,
   resize,
+  generateSrcSet,
+  generatePlaceholder,
+  thumbHashToImage,
 } from '/dist/index.js';
 
 const log = (message) => {
@@ -69,7 +72,6 @@ async function run() {
   const results = {};
   const started = performance.now();
 
-  // --- 1. backend + capability probe ---------------------------------------
   setBackend(browserBackend);
   results.offscreenCanvas = typeof OffscreenCanvas !== 'undefined';
   results.createImageBitmap = typeof createImageBitmap === 'function';
@@ -78,13 +80,11 @@ async function run() {
   results.canEncodeWebp = await canEncode('webp');
   results.canEncodeAvif = await canEncode('avif');
 
-  // --- 2. decode ----------------------------------------------------------
   const png = await makeImage('image/png');
   const raw = await browserBackend.decode(png);
   results.decode = { width: raw.width, height: raw.height, byteLength: raw.data.length };
   results.decodeFirstPixel = Array.from(raw.data.slice(0, 4));
 
-  // --- 3. pipeline + encode ----------------------------------------------
   const webpBlob = await processImage(png)
     .orient()
     .resize({ width: 32, fit: 'inside' })
@@ -96,12 +96,11 @@ async function run() {
   const webpInfo = await getImageInfo(webpBlob);
   results.webpDims = [webpInfo.width, webpInfo.height];
 
-  // --- 4. compress to a byte budget --------------------------------------
   const jpeg = await makeImage('image/jpeg', 400, 300);
   const compressed = await compressImage(jpeg, { maxSizeKB: 12, maxWidthOrHeight: 400 });
   results.compressed = { size: compressed.size, type: compressed.type };
 
-  // --- 5. EXIF orientation (browser decoder auto-rotates; we must not) ----
+  // The browser decoder auto-rotates; the library must not rotate a second time.
   const baseJpeg = new Uint8Array(await (await makeImage('image/jpeg', 40, 20)).arrayBuffer());
   const withExif = jpegWithExifOrientation(baseJpeg, 6);
   const info = await getImageInfo(withExif);
@@ -114,7 +113,6 @@ async function run() {
     unoriented: [unoriented.width, unoriented.height],
   };
 
-  // --- 6. real module worker ---------------------------------------------
   const worker = createImageWorker();
   results.workerMode = worker.mode;
   results.workerPing = await worker.ping();
@@ -132,13 +130,17 @@ async function run() {
   );
   results.workerProgress = progressRatios;
 
-  // Decode + encode through the worker (OffscreenCanvas inside the worker).
   const workerDecoded = await worker.decode(png);
   results.workerDecode = [workerDecoded.width, workerDecoded.height];
   const workerEncoded = await worker.encode(workerDecoded, { type: 'image/webp', quality: 0.7 });
   results.workerEncode = { type: workerEncoded.type, size: workerEncoded.size };
 
-  // Cancellation over a real worker.
+  const sharpened = await worker.process(
+    { width: 16, height: 16, data: new Uint8ClampedArray(16 * 16 * 4).fill(120) },
+    [{ op: 'sharpen', amount: 1, radius: 1 }],
+  );
+  results.workerSharpen = [sharpened.width, sharpened.height, sharpened.data[0]];
+
   const controller = new AbortController();
   const cancelled = worker.process(
     { width: 8, height: 8, data: new Uint8ClampedArray(8 * 8 * 4).fill(1) },
@@ -152,7 +154,6 @@ async function run() {
   );
   worker.dispose();
 
-  // --- 7. worker pool -----------------------------------------------------
   const pool = createWorkerPool({ size: 2 });
   const poolResults = await Promise.all(
     [4, 6, 8].map((size) =>
@@ -165,7 +166,6 @@ async function run() {
   results.pool = { mode: pool.mode, sizes: poolResults.map((image) => image.width) };
   pool.dispose();
 
-  // --- 8. typed errors ---------------------------------------------------
   try {
     processImage(png, { format: 'tiff' });
     results.unsupportedFormat = 'no-throw';
@@ -179,9 +179,25 @@ async function run() {
       (error) => (error instanceof ImageToolsError ? error.code : 'not-a-typed-error'),
     );
 
-  // --- 9. pure pixels in the browser ------------------------------------
   const resized = resize({ width: 2, height: 2, data: new Uint8ClampedArray(16).fill(50) }, 4);
   results.pixels = [resized.width, resized.height, resized.data[0]];
+
+  const variants = await generateSrcSet(png, { widths: [16, 32, 128], format: 'webp' });
+  results.srcset = variants.map((v) => [v.descriptor, v.height, v.blob.type]);
+  const placeholder = await generatePlaceholder(png);
+  const placeholderImage = await processImage(placeholder.dataURL).toRaw();
+  const expected = thumbHashToImage(placeholder.hash);
+  let maxDiff = 0;
+  for (let i = 0; i < expected.data.length; i++) {
+    maxDiff = Math.max(maxDiff, Math.abs(placeholderImage.data[i] - expected.data[i]));
+  }
+  results.placeholder = {
+    size: [placeholder.width, placeholder.height],
+    hashBytes: placeholder.hash.length,
+    decoded: [placeholderImage.width, placeholderImage.height],
+    expected: [expected.width, expected.height],
+    maxDiff,
+  };
 
   results.totalMs = Math.round(performance.now() - started);
   void log;

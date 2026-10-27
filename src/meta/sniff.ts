@@ -6,12 +6,6 @@ const ascii = (bytes: Uint8Array, start: number, end: number): string => {
   return s;
 };
 
-/**
- * Detects the image format from the first bytes of the file (magic numbers).
- *
- * Supports png, jpeg, webp, gif, avif, bmp, ico and svg; returns `'unknown'`
- * otherwise. AVIF/HEIF is detected through the ISO-BMFF `ftyp` box.
- */
 export function sniffFormat(bytes: Uint8Array): ImageFormatId {
   if (!bytes || bytes.length < 4) return 'unknown';
 
@@ -50,20 +44,16 @@ export function sniffFormat(bytes: Uint8Array): ImageFormatId {
   ) {
     return 'webp';
   }
-  // ISO-BMFF: ....ftyp + brand
+
   if (bytes.length >= 12 && ascii(bytes, 4, 8) === 'ftyp') {
     const brand = ascii(bytes, 8, 12);
     if (brand === 'avif' || brand === 'avis') return 'avif';
-    // HEIC/HEIF brands are NOT avif; report unknown so callers do not assume
-    // they can be decoded by an AVIF decoder.
   }
-  // SVG: leading whitespace/BOM, then '<svg' or '<?xml ... <svg'
   const head = ascii(bytes, 0, Math.min(bytes.length, 512)).replace(/^\uFEFF/, '').trimStart();
   if (head.startsWith('<svg') || (head.startsWith('<?xml') && /<svg[\s>]/i.test(head))) return 'svg';
   return 'unknown';
 }
 
-/** MIME type for a sniffed format (`null` for `unknown` and `svg`). */
 export function formatToMimeType(format: ImageFormatId): string | null {
   switch (format) {
     case 'png':

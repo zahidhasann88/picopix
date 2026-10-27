@@ -18,7 +18,6 @@ const px = (image: { data: Uint8ClampedArray }, x: number, y: number, w: number)
 
 describe('resize / kernels', () => {
   it('2x2 -> 4x4 bilinear uses edge clamping and exact quarter positions', () => {
-    // Source: 4 pixels with distinct colours.
     const src = createImage(2, 2);
     src.data.set([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255]);
     const out = resizeWithKernel(src, { width: 4, height: 4 }, 'bilinear');

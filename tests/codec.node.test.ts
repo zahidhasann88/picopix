@@ -5,6 +5,8 @@ import {
   compressImage,
   convertImage,
   cropToAspect,
+  generatePlaceholder,
+  generateSrcSet,
   generateThumbnail,
   getImageInfo,
   isBackendAvailable,
@@ -14,6 +16,7 @@ import {
   stripMetadata,
   setBackend,
   ImageToolsError,
+  thumbHashToImage,
 } from '../src/index';
 import {
   makeJpeg,
@@ -81,7 +84,6 @@ describe('Node backend (@napi-rs/canvas)', () => {
     expect(webpBlob.type).toBe('image/webp');
     const webpAgain = await nodeBackend.decode(webpBlob);
     expect([webpAgain.width, webpAgain.height]).toEqual([32, 24]);
-    // Pixels survive WebP lossy encoding to within a reasonable tolerance.
     let maxDelta = 0;
     for (let i = 0; i < raw.data.length; i++) {
       maxDelta = Math.max(maxDelta, Math.abs(raw.data[i] - webpAgain.data[i]));
@@ -141,6 +143,11 @@ describe('encode / convert', () => {
     const squareInfo = await getImageInfo(square);
     expect(squareInfo.width).toBe(squareInfo.height);
     expect(squareInfo.width).toBe(50);
+    expect(squareInfo.format).toBe('png');
+
+    // The input format is kept (the crop runs on decoded pixels internally).
+    const jpegSquare = await getImageInfo(await cropToAspect(makeJpeg(40, 20), 1));
+    expect([jpegSquare.format, jpegSquare.width, jpegSquare.height]).toEqual(['jpeg', 20, 20]);
 
     const thumb = await generateThumbnail(png, 16);
     const thumbInfo = await getImageInfo(thumb);
@@ -203,14 +210,11 @@ describe('EXIF orientation fixes real pixels (orientations 1..8)', () => {
       expect(info.width).toBe(30);
       expect(info.height).toBe(18);
 
-      // `.orient()` applies the recorded orientation.
       const oriented = await processImage(jpeg).orient().toRaw();
-      // The display dimensions must match `getImageInfo`.
       expect(oriented.width).toBe(info.displayWidth);
       expect(oriented.height).toBe(info.displayHeight);
       results[orientation] = { width: oriented.width, height: oriented.height };
 
-      // And `.orient(false)` keeps the raw, unrotated pixels.
       const raw = await processImage(jpeg).orient(false).toRaw();
       expect([raw.width, raw.height]).toEqual([30, 18]);
     }
@@ -292,5 +296,58 @@ describe('backend registration', () => {
     expect(raw.width).toBe(2);
     expect(calls).toEqual(['decode']);
     setBackend(nodeBackend);
+  });
+});
+
+describe('generateSrcSet', () => {
+  it('emits one file per width, capped at the source width', async () => {
+    const entries = await generateSrcSet(makePng(400, 200), { widths: [800, 100, 200, 200] });
+    expect(entries.map((e) => [e.width, e.height, e.descriptor])).toEqual([
+      [100, 50, '100w'],
+      [200, 100, '200w'],
+      [400, 200, '400w'],
+    ]);
+    for (const entry of entries) {
+      expect(entry.blob.type).toBe('image/png');
+      const info = await getImageInfo(entry.blob);
+      expect([info.width, info.height]).toEqual([entry.width, entry.height]);
+    }
+  });
+
+  it('keeps JPEG input as JPEG and honours format and withoutEnlargement', async () => {
+    const jpeg = await generateSrcSet(makeJpeg(60, 30), { widths: [30] });
+    expect(jpeg[0].blob.type).toBe('image/jpeg');
+
+    const webp = await generateSrcSet(makePng(60, 30), {
+      widths: [120],
+      format: 'webp',
+      withoutEnlargement: false,
+    });
+    expect(webp[0].blob.type).toBe('image/webp');
+    expect([webp[0].width, webp[0].height]).toEqual([120, 60]);
+  });
+
+  it('rejects an empty or invalid width list', async () => {
+    await expect(generateSrcSet(makePng(10, 10), { widths: [] })).rejects.toThrow(/widths/);
+    await expect(generateSrcSet(makePng(10, 10), { widths: [0] })).rejects.toThrow(/widths/);
+  });
+});
+
+describe('generatePlaceholder', () => {
+  it('returns a ThumbHash, its base64 form and a decodable data URL', async () => {
+    const placeholder = await generatePlaceholder(makePng(300, 150));
+    expect([placeholder.width, placeholder.height]).toEqual([300, 150]);
+    expect(Buffer.from(placeholder.base64, 'base64')).toEqual(Buffer.from(placeholder.hash));
+    expect(placeholder.averageColor.a).toBe(255);
+
+    const decoded = await processImage(placeholder.dataURL).toRaw();
+    const expected = thumbHashToImage(placeholder.hash);
+    expect([decoded.width, decoded.height]).toEqual([expected.width, expected.height]);
+    expect(Array.from(decoded.data)).toEqual(Array.from(expected.data));
+  });
+
+  it('applies EXIF orientation before hashing', async () => {
+    const placeholder = await generatePlaceholder(makeJpegWithOrientation(6));
+    expect(placeholder.height).toBeGreaterThan(placeholder.width);
   });
 });

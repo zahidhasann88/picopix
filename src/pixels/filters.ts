@@ -1,20 +1,15 @@
-import { invalidArgument } from '../errors';
-import type { BlurOptions, RawImage } from '../types';
-import { assertImage, clampByte, toPremultiplied } from './util';
+import { invalidArgument } from "../errors";
+import type { BlurOptions, RawImage, SharpenOptions } from "../types";
+import { assertImage, clampByte, toPremultiplied } from "./util";
 
-/** Per-pixel filter name accepted by {@link filter}. */
 export type FilterName =
-  | 'grayscale'
-  | 'brightness'
-  | 'contrast'
-  | 'saturate'
-  | 'invert'
-  | 'threshold';
+  | "grayscale"
+  | "brightness"
+  | "contrast"
+  | "saturate"
+  | "invert"
+  | "threshold";
 
-/**
- * Converts to grayscale using Rec.601 luma. Alpha is preserved.
- * `grayscale(image)` and `grayscale(image, 1)` are identical.
- */
 export function grayscale(image: RawImage, amount = 1): RawImage {
   assertImage(image);
   const t = clamp01(amount);
@@ -30,13 +25,10 @@ export function grayscale(image: RawImage, amount = 1): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
-/**
- * Multiplies every colour channel by `amount` (`1` = unchanged).
- * Alpha is never touched.
- */
 export function brightness(image: RawImage, amount = 1): RawImage {
   assertImage(image);
-  if (!Number.isFinite(amount)) throw invalidArgument('brightness: amount must be a finite number');
+  if (!Number.isFinite(amount))
+    throw invalidArgument("brightness: amount must be a finite number");
   const out = new Uint8ClampedArray(image.data.length);
   const d = image.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -48,13 +40,10 @@ export function brightness(image: RawImage, amount = 1): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
-/**
- * Adjusts contrast around mid-grey. `1` = unchanged, `0` = flat grey `128`,
- * `2` = doubled contrast. Uses the standard `c * (x - 128) + 128` formula.
- */
 export function contrast(image: RawImage, amount = 1): RawImage {
   assertImage(image);
-  if (!Number.isFinite(amount)) throw invalidArgument('contrast: amount must be a finite number');
+  if (!Number.isFinite(amount))
+    throw invalidArgument("contrast: amount must be a finite number");
   const out = new Uint8ClampedArray(image.data.length);
   const d = image.data;
   const off = 128 * (1 - amount);
@@ -67,13 +56,10 @@ export function contrast(image: RawImage, amount = 1): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
-/**
- * Saturation multiplier. `0` = grayscale, `1` = unchanged, `2` = vivid.
- * Uses the luma-preserving `c + (pixel - luma) * s` form.
- */
 export function saturate(image: RawImage, amount = 1): RawImage {
   assertImage(image);
-  if (!Number.isFinite(amount)) throw invalidArgument('saturate: amount must be a finite number');
+  if (!Number.isFinite(amount))
+    throw invalidArgument("saturate: amount must be a finite number");
   const out = new Uint8ClampedArray(image.data.length);
   const d = image.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -86,7 +72,6 @@ export function saturate(image: RawImage, amount = 1): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
-/** Inverts RGB (`255 - x`). Alpha is preserved. */
 export function invert(image: RawImage): RawImage {
   assertImage(image);
   const out = new Uint8ClampedArray(image.data.length);
@@ -100,17 +85,15 @@ export function invert(image: RawImage): RawImage {
   return { width: image.width, height: image.height, data: out };
 }
 
-/**
- * Binarises the image: channels `>= threshold` become 255, the rest 0.
- * The comparison is done on luma, alpha is preserved.
- */
 export function threshold(image: RawImage, value = 128): RawImage {
   assertImage(image);
-  if (!Number.isFinite(value)) throw invalidArgument('threshold: value must be a number');
+  if (!Number.isFinite(value))
+    throw invalidArgument("threshold: value must be a number");
   const out = new Uint8ClampedArray(image.data.length);
   const d = image.data;
   for (let i = 0; i < d.length; i += 4) {
-    const on = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] >= value ? 255 : 0;
+    const on =
+      0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] >= value ? 255 : 0;
     out[i] = on;
     out[i + 1] = on;
     out[i + 2] = on;
@@ -123,52 +106,58 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
-/** Union type for the {@link filter} driver. */
 export type FilterSpec =
-  | { type: 'grayscale'; amount?: number }
-  | { type: 'brightness'; amount?: number }
-  | { type: 'contrast'; amount?: number }
-  | { type: 'saturate'; amount?: number }
-  | { type: 'invert' }
-  | { type: 'threshold'; value?: number };
+  | { type: "grayscale"; amount?: number }
+  | { type: "brightness"; amount?: number }
+  | { type: "contrast"; amount?: number }
+  | { type: "saturate"; amount?: number }
+  | { type: "invert" }
+  | { type: "threshold"; value?: number };
 
-/**
- * Applies one filter by name. Used by the serialisable worker op protocol:
- * `filter: { type: 'contrast', amount: 1.2 }`.
- */
 export function filter(image: RawImage, spec: FilterSpec): RawImage;
-export function filter(image: RawImage, type: FilterName, amount?: number): RawImage;
+export function filter(
+  image: RawImage,
+  type: FilterName,
+  amount?: number,
+): RawImage;
 export function filter(
   image: RawImage,
   specOrType: FilterSpec | FilterName,
   amount?: number,
 ): RawImage {
   const spec: FilterSpec =
-    typeof specOrType === 'string' ? ({ type: specOrType, amount } as FilterSpec) : specOrType;
+    typeof specOrType === "string"
+      ? ({ type: specOrType, amount } as FilterSpec)
+      : specOrType;
   switch (spec.type) {
-    case 'grayscale':
+    case "grayscale":
       return grayscale(image, spec.amount ?? 1);
-    case 'brightness':
+    case "brightness":
       return brightness(image, spec.amount ?? 1);
-    case 'contrast':
+    case "contrast":
       return contrast(image, spec.amount ?? 1);
-    case 'saturate':
+    case "saturate":
       return saturate(image, spec.amount ?? 1);
-    case 'invert':
+    case "invert":
       return invert(image);
-    case 'threshold':
+    case "threshold":
       return threshold(image, spec.value ?? 128);
     default:
-      throw invalidArgument(`filter: unknown filter '${String((spec as { type: string }).type)}'`);
+      throw invalidArgument(
+        `filter: unknown filter '${String((spec as { type: string }).type)}'`,
+      );
   }
 }
 
-/** Box blur of the alpha-premultiplied image (two horizontal/vertical passes). */
-function boxPass(src: Float32Array, width: number, height: number, radius: number): Float32Array {
+function boxPass(
+  src: Float32Array,
+  width: number,
+  height: number,
+  radius: number,
+): Float32Array {
   const tmp = new Float32Array(src.length);
   const out = new Float32Array(src.length);
   const win = radius * 2 + 1;
-  // Horizontal
   for (let y = 0; y < height; y++) {
     for (let c = 0; c < 4; c++) {
       let acc = 0;
@@ -185,7 +174,6 @@ function boxPass(src: Float32Array, width: number, height: number, radius: numbe
       }
     }
   }
-  // Vertical
   for (let x = 0; x < width; x++) {
     for (let c = 0; c < 4; c++) {
       let acc = 0;
@@ -204,33 +192,32 @@ function boxPass(src: Float32Array, width: number, height: number, radius: numbe
   return out;
 }
 
-/**
- * Blurs the image.
- *
- * - `type: 'box'` performs a single box blur of `radius` pixels (edge-clamped).
- * - `type: 'gaussian'` (default) approximates a gaussian of `sigma = radius`
- *   with `passes` box blurs (default 3), the standard fast approximation.
- *
- * Filtering happens in premultiplied space so transparent pixels do not bleed
- * colour into the subject.
- */
 export function blur(image: RawImage, options: number | BlurOptions): RawImage {
   assertImage(image);
-  const opts: BlurOptions = typeof options === 'number' ? { radius: options } : options;
+  const opts: BlurOptions =
+    typeof options === "number" ? { radius: options } : options;
   const radius = Math.round(opts.radius);
-  const type = opts.type ?? 'gaussian';
-  if (!Number.isFinite(radius) || radius < 0) throw invalidArgument('blur: radius must be >= 0');
-  if (radius === 0) return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+  const type = opts.type ?? "gaussian";
+  if (!Number.isFinite(radius) || radius < 0)
+    throw invalidArgument("blur: radius must be >= 0");
+  if (radius === 0)
+    return {
+      width: image.width,
+      height: image.height,
+      data: new Uint8ClampedArray(image.data),
+    };
 
   const pre = toPremultiplied(image);
   let buf = pre;
-  if (type === 'box') {
+  if (type === "box") {
     buf = boxPass(pre, image.width, image.height, radius);
   } else {
     const passes = Math.max(1, opts.passes ?? 3);
-    // Box width approximating a gaussian of the given sigma.
     const sigma = opts.radius;
-    const boxRadius = Math.max(1, Math.round(Math.sqrt((12 * sigma * sigma) / passes + 1) / 2 - 0.5) || 1);
+    const boxRadius = Math.max(
+      1,
+      Math.round(Math.sqrt((12 * sigma * sigma) / passes + 1) / 2 - 0.5) || 1,
+    );
     for (let p = 0; p < passes; p++) {
       buf = boxPass(buf, image.width, image.height, boxRadius);
     }
@@ -250,6 +237,42 @@ export function blur(image: RawImage, options: number | BlurOptions): RawImage {
     out[i + 1] = clampByte(buf[i + 1] * f);
     out[i + 2] = clampByte(buf[i + 2] * f);
     out[i + 3] = clampByte(a);
+  }
+  return { width: image.width, height: image.height, data: out };
+}
+
+/**
+ * Unsharp mask: `out = in + amount * (in - blur(in, radius))` on RGB. Alpha is
+ * kept. Differences smaller than `threshold` (0–255) are ignored, which keeps
+ * flat areas and noise from being sharpened.
+ */
+export function sharpen(
+  image: RawImage,
+  options: number | SharpenOptions = {},
+): RawImage {
+  assertImage(image);
+  const opts: SharpenOptions =
+    typeof options === "number" ? { amount: options } : options;
+  const amount = opts.amount ?? 1;
+  const radius = opts.radius ?? 1;
+  const thresholdValue = opts.threshold ?? 0;
+  if (!Number.isFinite(amount) || amount < 0)
+    throw invalidArgument("sharpen: amount must be >= 0");
+  if (!Number.isFinite(radius) || radius < 0)
+    throw invalidArgument("sharpen: radius must be >= 0");
+  const d = image.data;
+  const out = new Uint8ClampedArray(d);
+  if (amount === 0 || Math.round(radius) === 0) {
+    return { width: image.width, height: image.height, data: out };
+  }
+  const blurred = blur(image, { radius }).data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    for (let c = 0; c < 3; c++) {
+      const diff = d[i + c] - blurred[i + c];
+      if (Math.abs(diff) < thresholdValue) continue;
+      out[i + c] = clampByte(d[i + c] + amount * diff);
+    }
   }
   return { width: image.width, height: image.height, data: out };
 }

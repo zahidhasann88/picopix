@@ -1,4 +1,4 @@
-import { invalidArgument } from '../errors';
+import { invalidArgument } from "../errors";
 import type {
   AverageHash,
   DominantColor,
@@ -6,12 +6,14 @@ import type {
   Histogram,
   RawImage,
   RGBA,
-} from '../types';
-import { assertImage, luma } from './util';
-import { resizeWithKernel } from './resize';
+} from "../types";
+import { assertImage, luma } from "./util";
+import { resizeWithKernel } from "./resize";
 
-/** Per-channel and luma histograms (256 bins each). */
-export function histogram(image: RawImage, options: { step?: number } = {}): Histogram {
+export function histogram(
+  image: RawImage,
+  options: { step?: number } = {},
+): Histogram {
   assertImage(image);
   const step = Math.max(1, Math.floor(options.step ?? 1));
   const r = new Array<number>(256).fill(0);
@@ -35,7 +37,7 @@ export function histogram(image: RawImage, options: { step?: number } = {}): His
 
 function toHex(r: number, g: number, b: number): string {
   const h = (1 << 24) | (r << 16) | (g << 8) | b;
-  return `#${h.toString(16).slice(1).padStart(6, '0')}`;
+  return `#${h.toString(16).slice(1).padStart(6, "0")}`;
 }
 
 interface Sample {
@@ -44,7 +46,11 @@ interface Sample {
   b: number;
 }
 
-function collectSamples(image: RawImage, step: number, alphaThreshold: number): Sample[] {
+function collectSamples(
+  image: RawImage,
+  step: number,
+  alphaThreshold: number,
+): Sample[] {
   const d = image.data;
   const total = image.width * image.height;
   const stride = Math.max(1, Math.floor(step));
@@ -57,7 +63,6 @@ function collectSamples(image: RawImage, step: number, alphaThreshold: number): 
   return out;
 }
 
-/** Median cut on the 0..255 RGB cube. */
 function medianCut(samples: Sample[], count: number): DominantColor[] {
   const total = samples.length;
   interface Bucket {
@@ -66,14 +71,13 @@ function medianCut(samples: Sample[], count: number): DominantColor[] {
   let buckets: Bucket[] = [{ items: samples }];
 
   while (buckets.length < count) {
-    // Split the bucket with the largest channel range.
     let best = -1;
     let bestRange = -1;
-    let bestChannel: 'r' | 'g' | 'b' = 'r';
+    let bestChannel: "r" | "g" | "b" = "r";
     for (let i = 0; i < buckets.length; i++) {
       const items = buckets[i].items;
       if (items.length < 2) continue;
-      for (const c of ['r', 'g', 'b'] as const) {
+      for (const c of ["r", "g", "b"] as const) {
         let min = 255;
         let max = 0;
         for (const s of items) {
@@ -93,8 +97,6 @@ function medianCut(samples: Sample[], count: number): DominantColor[] {
     const bucket = buckets[best];
     const ch = bestChannel;
     const sorted = [...bucket.items].sort((p, q) => p[ch] - q[ch]);
-    // Split at the median, but never split a run of identical values in half —
-    // otherwise a single outlier is averaged into the majority cluster.
     let mid = sorted.length >> 1;
     if (mid < 1) mid = 1;
     if (mid >= sorted.length) mid = sorted.length - 1;
@@ -131,16 +133,21 @@ function medianCut(samples: Sample[], count: number): DominantColor[] {
       const R = Math.round(r / n);
       const G = Math.round(g / n);
       const B = Math.round(b / n);
-      return { r: R, g: G, b: B, hex: toHex(R, G, B), count: n, ratio: n / total };
+      return {
+        r: R,
+        g: G,
+        b: B,
+        hex: toHex(R, G, B),
+        count: n,
+        ratio: n / total,
+      };
     })
     .sort((p, q) => q.count - p.count);
 }
 
-/** Deterministic k-means over sampled pixels. */
 function kmeans(samples: Sample[], count: number): DominantColor[] {
   const total = samples.length;
   const k = Math.min(count, total);
-  // Deterministic initialisation: spread seeds across the sample list.
   const centroids: Sample[] = [];
   for (let i = 0; i < k; i++) {
     const s = samples[Math.floor(((i + 0.5) / k) * total)];
@@ -206,27 +213,29 @@ function kmeans(samples: Sample[], count: number): DominantColor[] {
     .sort((p, q) => q.count - p.count);
 }
 
-/**
- * Extracts the dominant colours of an image.
- *
- * - `method: 'median-cut'` (default) recursively splits the RGB cube.
- * - `method: 'kmeans'` runs a deterministic k-means (fixed seeds, 12 iterations).
- *
- * Results are sorted by pixel count, descending.
- */
-export function dominantColors(image: RawImage, options: DominantColorsOptions = {}): DominantColor[] {
+export function dominantColors(
+  image: RawImage,
+  options: DominantColorsOptions = {},
+): DominantColor[] {
   assertImage(image);
   const count = Math.max(1, Math.floor(options.count ?? 5));
   const alphaThreshold = options.alphaThreshold ?? 16;
   const target = 40_000;
-  const autoStep = Math.max(1, Math.ceil(Math.sqrt((image.width * image.height) / target)));
-  const step = options.sampleStep && options.sampleStep > 0 ? Math.floor(options.sampleStep) : autoStep;
+  const autoStep = Math.max(
+    1,
+    Math.ceil(Math.sqrt((image.width * image.height) / target)),
+  );
+  const step =
+    options.sampleStep && options.sampleStep > 0
+      ? Math.floor(options.sampleStep)
+      : autoStep;
   const samples = collectSamples(image, step, alphaThreshold);
   if (samples.length === 0) return [];
-  return options.method === 'kmeans' ? kmeans(samples, count) : medianCut(samples, count);
+  return options.method === "kmeans"
+    ? kmeans(samples, count)
+    : medianCut(samples, count);
 }
 
-/** Mean colour of the image (alpha-weighted, ignoring transparent pixels). */
 export function averageColor(image: RawImage, alphaThreshold = 1): RGBA {
   assertImage(image);
   const d = image.data;
@@ -242,21 +251,29 @@ export function averageColor(image: RawImage, alphaThreshold = 1): RGBA {
     n++;
   }
   if (n === 0) return { r: 0, g: 0, b: 0, a: 0 };
-  return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n), a: 255 };
+  return {
+    r: Math.round(r / n),
+    g: Math.round(g / n),
+    b: Math.round(b / n),
+    a: 255,
+  };
 }
 
-/**
- * Average hash (a perceptual hash) of the image.
- *
- * The image is scaled to `width x height` (default 8x8) in grayscale, and each
- * bit is `1` when the pixel's luma is `>=` the mean.
- */
-export function averageHash(image: RawImage, size: { width: number; height: number } = { width: 8, height: 8 }): AverageHash {
+export function averageHash(
+  image: RawImage,
+  size: { width: number; height: number } = { width: 8, height: 8 },
+): AverageHash {
   assertImage(image);
   const w = Math.max(1, Math.floor(size.width));
   const h = Math.max(1, Math.floor(size.height));
-  if (w * h > 4096) throw invalidArgument('averageHash: hash size is too large');
-  const small = resizeWithKernel(image, { width: w, height: h }, 'bilinear', true);
+  if (w * h > 4096)
+    throw invalidArgument("averageHash: hash size is too large");
+  const small = resizeWithKernel(
+    image,
+    { width: w, height: h },
+    "bilinear",
+    true,
+  );
   const lumas: number[] = new Array(w * h);
   let sum = 0;
   for (let p = 0; p < w * h; p++) {
@@ -266,19 +283,18 @@ export function averageHash(image: RawImage, size: { width: number; height: numb
     sum += v;
   }
   const mean = sum / (w * h);
-  let bits = '';
+  let bits = "";
   const bytes = new Uint8Array(Math.ceil((w * h) / 8));
   for (let p = 0; p < w * h; p++) {
     const bit = lumas[p] >= mean ? 1 : 0;
-    bits += bit ? '1' : '0';
+    bits += bit ? "1" : "0";
     if (bit) bytes[p >> 3] |= 0x80 >> (p & 7);
   }
-  let hex = '';
-  for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+  let hex = "";
+  for (const byte of bytes) hex += byte.toString(16).padStart(2, "0");
   return { width: w, height: h, bits, hex, data: bytes };
 }
 
-/** Hamming distance between two hashes (same length). */
 export function hashDistance(a: AverageHash, b: AverageHash): number {
   let dist = 0;
   for (let i = 0; i < a.data.length; i++) {

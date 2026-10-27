@@ -1,10 +1,3 @@
-/**
- * `picopix/pixels` — pure, DOM-free pixel functions.
- *
- * Importing from this subpath pulls in **zero** canvas/codec/browser code: the
- * bundle only contains arithmetic on typed arrays (verified by
- * `tests/treeshake.test.ts`).
- */
 export {
   assertImage,
   clampByte,
@@ -68,6 +61,7 @@ export {
   grayscale,
   invert,
   saturate,
+  sharpen,
   threshold,
   type FilterName,
   type FilterSpec,
@@ -87,5 +81,13 @@ export {
   hashDistance,
   histogram,
 } from './pixels/analysis';
+
+export {
+  thumbHash,
+  thumbHashAspectRatio,
+  thumbHashToAverageColor,
+  thumbHashToDataURL,
+  thumbHashToImage,
+} from './pixels/thumbhash';
 
 export type * from './types';

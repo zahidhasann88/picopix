@@ -203,6 +203,12 @@ describe('EXIF orientation', () => {
 });
 
 describe('pad / trim', () => {
+  it('colour trim without a colour uses the top-left pixel as background', () => {
+    const src = createImage(4, 3, [255, 255, 255, 255]);
+    src.data.set([200, 10, 10, 255], (1 * 4 + 2) * 4); // one red pixel at (2,1)
+    expect(trim(src, { alpha: false })).toEqual({ x: 2, y: 1, width: 1, height: 1 });
+  });
+
   it('pad adds a border on each side', () => {
     const src = coordinateImage(2, 2);
     const out = pad(src, 1, { r: 9, g: 8, b: 7, a: 255 });

@@ -8,8 +8,10 @@ import {
   grayscale,
   invert,
   saturate,
+  sharpen,
   threshold,
 } from '../src/pixels';
+import { executeOps } from '../src/worker/execute';
 
 function image(pixels: number[][], width: number, height: number) {
   const out = createImage(width, height);
@@ -137,7 +139,6 @@ describe('blur', () => {
     src.data.set([255, 0, 0, 0], 0); // transparent red
     src.data.set([0, 0, 255, 255], 8); // opaque blue
     const out = blur(src, { radius: 1, type: 'box' });
-    // The transparent pixel stays transparent, and the blue pixel stays pure blue.
     expect(out.data[3]).toBe(0);
     expect(out.data[8]).toBe(0);
     expect(out.data[10]).toBe(255);
@@ -145,5 +146,59 @@ describe('blur', () => {
 
   it('rejects negative radii', () => {
     expect(() => blur(createImage(2, 2), -2)).toThrow(/radius/);
+  });
+});
+
+describe('sharpen', () => {
+  const edge = () =>
+    image(
+      [
+        [50, 50, 50, 255],
+        [50, 50, 50, 255],
+        [50, 50, 50, 255],
+        [200, 200, 200, 255],
+        [200, 200, 200, 255],
+        [200, 200, 200, 255],
+      ],
+      6,
+      1,
+    );
+
+  it('increases contrast across an edge', () => {
+    const out = sharpen(edge(), { amount: 1, radius: 1 });
+    expect(out.data[2 * 4]).toBeLessThan(50);
+    expect(out.data[3 * 4]).toBeGreaterThan(200);
+    expect(out.data[2 * 4 + 3]).toBe(255);
+  });
+
+  it('leaves flat areas and amount 0 unchanged', () => {
+    const flat = createImage(5, 5, [90, 120, 30, 255]);
+    expect(Array.from(sharpen(flat).data)).toEqual(Array.from(flat.data));
+    expect(Array.from(sharpen(edge(), 0).data)).toEqual(Array.from(edge().data));
+  });
+
+  it('skips differences below the threshold', () => {
+    const out = sharpen(edge(), { amount: 1, radius: 1, threshold: 255 });
+    expect(Array.from(out.data)).toEqual(Array.from(edge().data));
+  });
+
+  it('keeps alpha and does not touch fully transparent pixels', () => {
+    const img = edge();
+    img.data[3] = 0;
+    img.data[4 * 4 + 3] = 128;
+    const out = sharpen(img, 2);
+    expect(out.data[3]).toBe(0);
+    expect(Array.from(out.data.slice(0, 3))).toEqual([50, 50, 50]);
+    expect(out.data[4 * 4 + 3]).toBe(128);
+  });
+
+  it('rejects negative options', () => {
+    expect(() => sharpen(edge(), { amount: -1 })).toThrow(/amount/);
+    expect(() => sharpen(edge(), { radius: -1 })).toThrow(/radius/);
+  });
+
+  it('runs as a worker op', () => {
+    const viaOp = executeOps(edge(), [{ op: 'sharpen', amount: 1, radius: 1 }]);
+    expect(Array.from(viaOp.data)).toEqual(Array.from(sharpen(edge(), { amount: 1, radius: 1 }).data));
   });
 });

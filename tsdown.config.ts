@@ -1,6 +1,6 @@
-import { defineConfig } from 'tsup';
+import { defineConfig, type UserConfig } from 'tsdown';
 
-export default defineConfig({
+const config: UserConfig = defineConfig({
   entry: {
     index: 'src/index.ts',
     pixels: 'src/pixels.ts',
@@ -12,13 +12,9 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   clean: true,
-  splitting: false,
   sourcemap: true,
   target: 'es2022',
   platform: 'neutral',
-  treeshake: true,
-  minify: false,
-  outExtension({ format }) {
-    return { js: format === 'cjs' ? '.cjs' : '.js' };
-  },
 });
+
+export default config;

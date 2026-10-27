@@ -1,17 +1,9 @@
-/**
- * Vanilla Vite demo for `picopix`.
- *
- * Drop an image -> it is decoded, oriented, resized, converted and compressed to
- * a byte budget, with all pixel work offloaded to a Web Worker. The before/after
- * sizes, dimensions and elapsed time are printed, and the result can be
- * downloaded.
- *
- * This is app code: it uses only the library's public API.
- */
 import {
   canEncode,
   createImageWorker,
   compressImage,
+  generatePlaceholder,
+  generateSrcSet,
   getImageInfo,
   stripMetadata,
 } from 'picopix';
@@ -29,10 +21,13 @@ const els = {
   maxEdge: document.getElementById('maxEdge'),
   format: document.getElementById('format'),
   maxSizeKB: document.getElementById('maxSizeKB'),
+  sharpen: document.getElementById('sharpen'),
   strip: document.getElementById('strip'),
+  placeholder: document.getElementById('placeholder'),
+  placeholderMeta: document.getElementById('placeholderMeta'),
+  variants: document.getElementById('variants'),
 };
 
-// One worker for the whole page; pixel work stays off the main thread.
 const worker = createImageWorker();
 
 /** Recreated whenever a new image is processed, so the previous run can cancel. */
@@ -59,7 +54,6 @@ function releaseUrls() {
   while (objectUrls.length) URL.revokeObjectURL(objectUrls.pop());
 }
 
-/** Maps the selected format to the canvas MIME type the library expects. */
 function mimeFor(format) {
   return `image/${format === 'jpeg' ? 'jpeg' : format}`;
 }
@@ -82,18 +76,18 @@ async function handleFile(file) {
   const started = performance.now();
 
   try {
-    // 1. Metadata only — cheap, no pixels decoded.
     const info = await getImageInfo(file);
     setStatus(`Read ${info.format.toUpperCase()} ${info.width}x${info.height} (orientation ${info.orientation})...`);
 
-    // 2. Decode + orient + resize + convert, in the worker.
     const raw = await worker.decode(file, { signal: controller.signal });
+    const ops = [
+      { op: 'orient', orientation: info.orientation },
+      { op: 'resize', width: maxEdge, height: maxEdge, fit: 'inside', kernel: 'lanczos3' },
+    ];
+    if (els.sharpen.checked) ops.push({ op: 'sharpen', amount: 0.5, radius: 1 });
     const resized = await worker.process(
       raw,
-      [
-        { op: 'orient', orientation: info.orientation },
-        { op: 'resize', width: maxEdge, height: maxEdge, fit: 'inside', kernel: 'lanczos3' },
-      ],
+      ops,
       {
         signal: controller.signal,
         onProgress: ({ phase, ratio }) => {
@@ -102,13 +96,12 @@ async function handleFile(file) {
       },
     );
 
-    // 3. Encode (off the main thread) and, if requested, hit the size budget.
     let blob;
     if (maxSizeKB && mime !== 'image/png') {
-      // compressImage does its own binary search and downscaling.
       blob = await compressImage(file, {
         maxSizeKB,
         maxWidthOrHeight: maxEdge,
+        worker,
         format,
         signal: controller.signal,
       });
@@ -116,8 +109,16 @@ async function handleFile(file) {
       blob = await worker.encode(resized, { type: mime, quality: 0.85 }, { signal: controller.signal });
     }
 
-    // 4. Optional lossless metadata strip on the encoded bytes.
     if (els.strip.checked) blob = await stripMetadata(blob);
+
+    setStatus('Building srcset variants and placeholder...');
+    const variants = await generateSrcSet(file, {
+      widths: [320, 640, 1280],
+      format,
+      worker,
+      signal: controller.signal,
+    });
+    const placeholder = await generatePlaceholder(file, { worker, signal: controller.signal });
 
     const outInfo = await getImageInfo(blob);
     const elapsed = Math.round(performance.now() - started);
@@ -127,6 +128,20 @@ async function handleFile(file) {
     els.processed.src = trackUrl(URL.createObjectURL(blob));
     els.originalMeta.textContent = `${info.displayWidth}x${info.displayHeight} · ${formatBytes(file.size)}`;
     els.processedMeta.textContent = `${outInfo.width}x${outInfo.height} · ${formatBytes(blob.size)}`;
+    els.placeholder.src = placeholder.dataURL;
+    els.placeholder.style.aspectRatio = `${placeholder.width} / ${placeholder.height}`;
+    els.placeholderMeta.textContent = `${placeholder.hash.length} bytes`;
+    els.variants.replaceChildren(
+      ...variants.map((variant) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = trackUrl(URL.createObjectURL(variant.blob));
+        link.target = '_blank';
+        link.textContent = variant.descriptor;
+        item.append(link, ` ${variant.width}x${variant.height} · ${formatBytes(variant.blob.size)}`);
+        return item;
+      }),
+    );
     els.download.href = els.processed.src;
     els.download.download = `processed.${format}`;
     els.result.hidden = false;
@@ -146,7 +161,6 @@ async function handleFile(file) {
   }
 }
 
-// --- wiring ----------------------------------------------------------------
 els.dropzone.addEventListener('click', () => els.file.click());
 els.dropzone.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') els.file.click();
@@ -173,7 +187,6 @@ window.addEventListener('beforeunload', () => {
   releaseUrls();
 });
 
-// Report the environment once so the demo doubles as a capability check.
 Promise.all([canEncode('webp'), canEncode('avif'), canEncode('jpeg')]).then(([webp, avif, jpeg]) => {
   if (!jpeg) {
     setStatus('This browser cannot encode images; the demo needs canvas support.', 'error');

@@ -185,6 +185,33 @@ describe('createImageWorker (worker mode, simulated boundary)', () => {
     expect(FakeWorker.instances[0].terminated).toBe(true);
   });
 
+  it('degrades to the main thread after a fatal worker error', async () => {
+    let fake: FakeWorker | undefined;
+    const worker = createImageWorker({
+      workerFactory: () => {
+        fake = new FakeWorker();
+        return fake as unknown as Worker;
+      },
+    });
+    // e.g. the worker script 404s because a bundler did not emit it
+    fake!.dispatchEvent(new Event('error'));
+    expect(worker.mode).toBe('fallback');
+    expect(fake!.terminated).toBe(true);
+    const out = await worker.process(coordinateImage(4, 2), [{ op: 'flip', axis: 'x' }]);
+    expect([out.width, out.height]).toEqual([4, 2]);
+  });
+
+  it('does not detach caller-owned op buffers (reusable watermark)', async () => {
+    const worker = withFakeWorker();
+    const watermark = createImage(1, 1, [255, 0, 0, 255]);
+    for (let i = 0; i < 2; i++) {
+      await worker.process(coordinateImage(2, 2), [{ op: 'composite', source: watermark }]);
+    }
+    expect(FakeWorker.instances[0].transfers[1]).not.toContain(watermark.data.buffer);
+    expect(watermark.data.length).toBe(4);
+    worker.dispose();
+  });
+
   it('falls back to the main thread when Worker construction throws', async () => {
     const worker = createImageWorker({
       workerFactory: () => {

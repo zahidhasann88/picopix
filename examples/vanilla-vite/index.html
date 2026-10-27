@@ -10,7 +10,8 @@
     <main>
       <h1>picopix</h1>
       <p class="lede">
-        Drop an image to resize, convert and compress it — the pixel work runs in a
+        Drop an image to resize, sharpen, convert and compress it, and to build its
+        responsive <code>srcset</code> and ThumbHash placeholder — the pixel work runs in a
         Web Worker. Everything here is ordinary app code, not library code.
       </p>
 
@@ -31,6 +32,10 @@
         <label>
           Target size (KB)
           <input id="maxSizeKB" type="number" min="1" max="20000" value="120" />
+        </label>
+        <label class="checkbox">
+          <input id="sharpen" type="checkbox" checked />
+          Sharpen
         </label>
         <label class="checkbox">
           <input id="strip" type="checkbox" checked />
@@ -55,6 +60,14 @@
           <figcaption>Processed <span id="processedMeta"></span></figcaption>
           <img id="processed" alt="processed" />
         </figure>
+        <figure>
+          <figcaption>ThumbHash placeholder <span id="placeholderMeta"></span></figcaption>
+          <img id="placeholder" alt="placeholder" />
+        </figure>
+        <section class="variants">
+          <h2>srcset variants</h2>
+          <ul id="variants"></ul>
+        </section>
         <a id="download" class="download" download="processed">Download</a>
       </section>
     </main>

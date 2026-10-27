@@ -12,8 +12,8 @@ on:
         default: true
 
 permissions:
-  contents: write # create the GitHub release
-  id-token: write # npm provenance
+  contents: write
+  id-token: write
 
 jobs:
   publish:
@@ -24,13 +24,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Check that package.json, tag and CHANGELOG agree
         run: |
@@ -44,24 +46,24 @@ jobs:
           grep -q "## \[$PKG_VERSION\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no [${PKG_VERSION}] section"; exit 1; }
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Test
-        run: npm test
+        run: pnpm test
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Worker thread tests against the build
-        run: npx vitest run tests/worker.thread.test.ts
+        run: pnpm exec vitest run tests/worker.thread.test.ts
 
       - name: Install Chromium and run real browser checks
         run: |
-          npx playwright install --with-deps chromium
-          npm run test:browser
+          pnpm exec playwright-core install --with-deps chromium
+          pnpm run test:browser
 
       - name: Pack
-        run: npm pack
+        run: pnpm pack
 
       - name: Upload tarball
         uses: actions/upload-artifact@v4
@@ -72,7 +74,7 @@ jobs:
 
       - name: Publish to npm
         if: github.ref_type == 'tag' && (github.event.inputs.dry_run == '' || github.event.inputs.dry_run == 'false')
-        run: npm publish --provenance --access public
+        run: npm publish ./picopix-*.tgz --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

@@ -1,19 +1,7 @@
 /**
- * Real-browser verification (Chromium via Playwright).
- *
- * Serves the repository over HTTP so that ES modules and the module `Worker`
- * resolve exactly as they would in a real app, then runs
- * `tests/browser/page.js` against the **built** `dist/` bundles.
- *
- * Covered for real here (not simulated):
- *  - `createImageBitmap` + `OffscreenCanvas` decode
- *  - canvas encode (PNG/JPEG/WebP, plus a WebP/AVIF capability probe)
- *  - EXIF orientation with a decoder that auto-rotates
- *  - a genuine module Worker (`dist/worker.js`), transferable buffers,
- *    progress messages, cancellation, and a two-worker pool
- *
- * Requires `dist/` (`npm run build`) and Playwright's Chromium
- * (`npx playwright install chromium`). Exits non-zero when a check fails.
+ * Serves the repository over HTTP so ES modules and the module `Worker` resolve
+ * as in a real app, then runs `tests/browser/page.js` against the built `dist/`.
+ * Requires `pnpm build` and a Chromium (see `BROWSER_CHANNEL` below).
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -52,13 +40,22 @@ let browser;
 let failures = 0;
 
 try {
-  browser = await chromium.launch({ args: ['--no-sandbox'] });
+  // BROWSER_CHANNEL=chrome|msedge uses an installed browser instead of the
+  // Playwright download (`pnpm exec playwright-core install chromium`).
+  const channel = process.env.BROWSER_CHANNEL || undefined;
+  browser = await chromium.launch({ args: ['--no-sandbox'], channel });
   const page = await browser.newPage();
   const consoleErrors = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
+    // Failed loads are reported per URL below; their console text has no URL.
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
+      consoleErrors.push(message.text());
+    }
   });
   page.on('pageerror', (error) => consoleErrors.push(String(error)));
+  page.on('response', (response) => {
+    if (response.status() >= 400) consoleErrors.push(`HTTP ${response.status()} ${response.url()}`);
+  });
 
   await page.goto(`http://127.0.0.1:${port}/tests/browser/index.html`);
   await page.waitForFunction('window.__itcResults || window.__itcError', null, { timeout: 60_000 });
@@ -136,6 +133,24 @@ try {
   });
   check('pure pixel functions work in the browser', () => {
     assert.deepEqual(r.pixels, [4, 4, 50]);
+  });
+  check('the worker runs the sharpen op', () => {
+    assert.deepEqual(r.workerSharpen, [16, 16, 120]);
+  });
+  check('generateSrcSet emits capped, de-duplicated WebP variants', () => {
+    assert.deepEqual(r.srcset, [
+      ['16w', 8, 'image/webp'],
+      ['32w', 16, 'image/webp'],
+      ['64w', 32, 'image/webp'],
+    ]);
+  });
+  check('generatePlaceholder returns a ThumbHash whose data URL decodes', () => {
+    assert.deepEqual(r.placeholder.size, [64, 32]);
+    assert.ok(r.placeholder.hashBytes >= 5 && r.placeholder.hashBytes <= 25, String(r.placeholder.hashBytes));
+    // The hash stores an approximate aspect ratio, so compare with the pure decoder.
+    assert.deepEqual(r.placeholder.decoded, r.placeholder.expected);
+    assert.equal(r.placeholder.decoded[0], 32);
+    assert.equal(r.placeholder.maxDiff, 0);
   });
   check('no uncaught page errors', () => {
     const relevant = consoleErrors.filter((message) => !message.includes('favicon'));

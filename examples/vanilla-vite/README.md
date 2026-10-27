@@ -1,32 +1,17 @@
-# Vanilla Vite demo
+# Vite demo
 
-A single-page demo of `picopix`: drop an image, and it is oriented,
-resized, converted and compressed to a byte budget — with the pixel work running
-in a Web Worker. Before/after dimensions and file sizes are shown side by side.
-
-This folder is **source only**: it is not built by the library's CI, and it
-depends on the parent package via `file:../..`.
-
-## Run it
+Drop an image to resize, sharpen, convert and compress it in a Web Worker, and
+to see its `srcset` variants and ThumbHash placeholder.
 
 ```bash
-cd picopix        # repository root
-npm install
-npm run build              # the demo consumes the built package
+# from the repository root
+pnpm install && pnpm build
 
 cd examples/vanilla-vite
-npm install
-npm run dev                # http://localhost:5173
+pnpm install --ignore-workspace
+pnpm dev   # http://localhost:5173
 ```
 
-## What to look at
-
-- `main.js` — worker creation (`createImageWorker()`), `worker.decode()` +
-  `worker.process()` with an ops list, `compressImage()` for the byte budget,
-  `stripMetadata()` on the encoded result, and `AbortSignal` cancellation when a
-  new file replaces the previous run.
-- `index.html` / `style.css` — the UI; no framework, no build magic.
-
-Note that **no worker configuration is needed in `vite.config.js`**: the default
-worker factory uses the `new Worker(new URL('./worker.js', import.meta.url))`
-pattern that Vite (and webpack 5) resolve automatically.
+The demo uses the built package (`file:../..`), and CI builds it on every push.
+`vite.config.js` sets `optimizeDeps.exclude: ['picopix']` so Vite can bundle the
+worker (see [docs/workers.md](../../docs/workers.md#bundler-setup)).

@@ -1,12 +1,12 @@
-import { invalidArgument } from '../errors';
-import type { CropOptions, RawImage, Rect, RGBA } from '../types';
-import { assertImage, createImage, normalizeColor, sampleBilinear } from './util';
+import { invalidArgument } from "../errors";
+import type { CropOptions, RawImage, Rect, RGBA } from "../types";
+import {
+  assertImage,
+  createImage,
+  normalizeColor,
+  sampleBilinear,
+} from "./util";
 
-/**
- * Crops a rectangle out of the image. The rectangle is clamped to the image
- * bounds (negative `x`/`y` are allowed and mean "pad from the edge" is *not*
- * performed — the result shrinks instead). Zero-sized crops throw.
- */
 export function crop(image: RawImage, options: CropOptions): RawImage {
   assertImage(image);
   const x = Math.round(options.x ?? 0);
@@ -14,14 +14,16 @@ export function crop(image: RawImage, options: CropOptions): RawImage {
   const width = Math.round(options.width ?? image.width - x);
   const height = Math.round(options.height ?? image.height - y);
   if (width <= 0 || height <= 0) {
-    throw invalidArgument(`crop: resulting size must be positive (got ${width}x${height})`);
+    throw invalidArgument(
+      `crop: resulting size must be positive (got ${width}x${height})`,
+    );
   }
   const srcX = Math.max(0, x);
   const srcY = Math.max(0, y);
   const srcW = Math.min(width, image.width - srcX);
   const srcH = Math.min(height, image.height - srcY);
   if (srcW <= 0 || srcH <= 0) {
-    throw invalidArgument('crop: rectangle is outside the image');
+    throw invalidArgument("crop: rectangle is outside the image");
   }
   const out = new Uint8ClampedArray(width * height * 4);
   const dx = srcX - x;
@@ -34,7 +36,6 @@ export function crop(image: RawImage, options: CropOptions): RawImage {
   return { width, height, data: out };
 }
 
-/** Rotates 90° clockwise. `WxH` becomes `HxW`. */
 export function rotate90(image: RawImage): RawImage {
   assertImage(image);
   const { width, height, data } = image;
@@ -55,7 +56,6 @@ export function rotate90(image: RawImage): RawImage {
   return { width: height, height: width, data: out };
 }
 
-/** Rotates 180°. */
 export function rotate180(image: RawImage): RawImage {
   assertImage(image);
   const { width, height, data } = image;
@@ -72,7 +72,6 @@ export function rotate180(image: RawImage): RawImage {
   return { width, height, data: out };
 }
 
-/** Rotates 270° clockwise (90° counter-clockwise). */
 export function rotate270(image: RawImage): RawImage {
   assertImage(image);
   const { width, height, data } = image;
@@ -93,16 +92,16 @@ export function rotate270(image: RawImage): RawImage {
   return { width: height, height: width, data: out };
 }
 
-/** Mirrors left/right when `axis === 'x'`, top/bottom when `'y'`. */
-export function flip(image: RawImage, axis: 'x' | 'y' = 'x'): RawImage {
+export function flip(image: RawImage, axis: "x" | "y" = "x"): RawImage {
   assertImage(image);
-  if (axis !== 'x' && axis !== 'y') throw invalidArgument(`flip: unknown axis '${String(axis)}'`);
+  if (axis !== "x" && axis !== "y")
+    throw invalidArgument(`flip: unknown axis '${String(axis)}'`);
   const { width, height, data } = image;
   const out = new Uint8ClampedArray(data.length);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const sx = axis === 'x' ? width - 1 - x : x;
-      const sy = axis === 'y' ? height - 1 - y : y;
+      const sx = axis === "x" ? width - 1 - x : x;
+      const sy = axis === "y" ? height - 1 - y : y;
       const si = (sy * width + sx) * 4;
       const di = (y * width + x) * 4;
       out[di] = data[si];
@@ -114,26 +113,29 @@ export function flip(image: RawImage, axis: 'x' | 'y' = 'x'): RawImage {
   return { width, height, data: out };
 }
 
-/** Horizontal mirror. */
 export function flipX(image: RawImage): RawImage {
-  return flip(image, 'x');
+  return flip(image, "x");
 }
 
-/** Vertical mirror. */
 export function flipY(image: RawImage): RawImage {
-  return flip(image, 'y');
+  return flip(image, "y");
 }
 
-/**
- * Rotates by an arbitrary angle (degrees, clockwise for positive values).
- * The output is the smallest upright rectangle that contains the rotated image;
- * corners are filled with `background` (default transparent).
- */
-export function rotate(image: RawImage, angle: number, background?: RGBA): RawImage {
+export function rotate(
+  image: RawImage,
+  angle: number,
+  background?: RGBA,
+): RawImage {
   assertImage(image);
-  if (!Number.isFinite(angle)) throw invalidArgument('rotate: angle must be a finite number');
+  if (!Number.isFinite(angle))
+    throw invalidArgument("rotate: angle must be a finite number");
   const norm = ((angle % 360) + 360) % 360;
-  if (norm === 0) return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+  if (norm === 0)
+    return {
+      width: image.width,
+      height: image.height,
+      data: new Uint8ClampedArray(image.data),
+    };
   if (norm === 90) return rotate90(image);
   if (norm === 180) return rotate180(image);
   if (norm === 270) return rotate270(image);
@@ -152,7 +154,6 @@ export function rotate(image: RawImage, angle: number, background?: RGBA): RawIm
   const px: [number, number, number, number] = [0, 0, 0, 0];
   for (let y = 0; y < dh; y++) {
     for (let x = 0; x < dw; x++) {
-      // Inverse rotation: map destination pixel centre back into source space.
       const dx = x + 0.5 - dcx;
       const dy = y + 0.5 - dcy;
       const sx = dx * cos + dy * sin + cx;
@@ -160,7 +161,6 @@ export function rotate(image: RawImage, angle: number, background?: RGBA): RawIm
       if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) continue;
       sampleBilinear(image, sx / sw, sy / sh, px);
       const di = (y * dw + x) * 4;
-      // Blend over the background (source-over) so transparent sources compose.
       const sa = px[3] / 255;
       if (sa >= 1) {
         out.data[di] = px[0];
@@ -181,27 +181,18 @@ export function rotate(image: RawImage, angle: number, background?: RGBA): RawIm
   return out;
 }
 
-/**
- * Applies an EXIF orientation (`1..8`) to the pixels.
- *
- * The mapping is the one defined by EXIF/TIFF:
- *
- * | value | meaning                                    | transform            |
- * |-------|--------------------------------------------|----------------------|
- * | 1     | none                                       | identity             |
- * | 2     | mirror horizontal                          | flipX                |
- * | 3     | rotate 180                                 | rotate180            |
- * | 4     | mirror vertical                            | flipY                |
- * | 5     | flip across the main diagonal              | transpose            |
- * | 6     | rotate 90 CW                               | rotate90             |
- * | 7     | flip across the anti-diagonal              | transverse           |
- * | 8     | rotate 270 CW (90 CCW)                     | rotate270            |
- */
-export function applyOrientation(image: RawImage, orientation: number): RawImage {
+export function applyOrientation(
+  image: RawImage,
+  orientation: number,
+): RawImage {
   assertImage(image);
   switch (orientation) {
     case 1:
-      return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+      return {
+        width: image.width,
+        height: image.height,
+        data: new Uint8ClampedArray(image.data),
+      };
     case 2:
       return flipX(image);
     case 3:
@@ -209,33 +200,36 @@ export function applyOrientation(image: RawImage, orientation: number): RawImage
     case 4:
       return flipY(image);
     case 5:
-      // transpose: flip across the main diagonal, (x, y) -> (y, x)
       return rotate270(flipX(image));
     case 6:
       return rotate90(image);
     case 7:
-      // transverse: flip across the anti-diagonal, (x, y) -> (h-1-y, w-1-x)
       return rotate90(flipX(image));
     case 8:
       return rotate270(image);
     default:
-      throw invalidArgument(`applyOrientation: orientation must be 1..8 (got ${orientation})`);
+      throw invalidArgument(
+        `applyOrientation: orientation must be 1..8 (got ${orientation})`,
+      );
   }
 }
 
-/** Pads an image with a solid colour (default transparent). */
 export function pad(
   image: RawImage,
-  padding: number | { top?: number; right?: number; bottom?: number; left?: number },
+  padding:
+    | number
+    | { top?: number; right?: number; bottom?: number; left?: number },
   color?: RGBA,
 ): RawImage {
   assertImage(image);
-  const padTop = typeof padding === 'number' ? padding : padding.top ?? 0;
-  const padRight = typeof padding === 'number' ? padding : padding.right ?? 0;
-  const padBottom = typeof padding === 'number' ? padding : padding.bottom ?? 0;
-  const padLeft = typeof padding === 'number' ? padding : padding.left ?? 0;
+  const padTop = typeof padding === "number" ? padding : (padding.top ?? 0);
+  const padRight = typeof padding === "number" ? padding : (padding.right ?? 0);
+  const padBottom =
+    typeof padding === "number" ? padding : (padding.bottom ?? 0);
+  const padLeft = typeof padding === "number" ? padding : (padding.left ?? 0);
   for (const v of [padTop, padRight, padBottom, padLeft]) {
-    if (!Number.isInteger(v) || v < 0) throw invalidArgument('pad: padding must be non-negative integers');
+    if (!Number.isInteger(v) || v < 0)
+      throw invalidArgument("pad: padding must be non-negative integers");
   }
   const width = image.width + padLeft + padRight;
   const height = image.height + padTop + padBottom;
@@ -243,35 +237,26 @@ export function pad(
   for (let y = 0; y < image.height; y++) {
     const srcStart = y * image.width * 4;
     const dstStart = ((y + padTop) * width + padLeft) * 4;
-    out.data.set(image.data.subarray(srcStart, srcStart + image.width * 4), dstStart);
+    out.data.set(
+      image.data.subarray(srcStart, srcStart + image.width * 4),
+      dstStart,
+    );
   }
   return out;
 }
 
-/**
- * Trims uniform borders.
- *
- * - With `alpha: true` (default when no `color` is given) the image is trimmed
- *   to its non-transparent bounding box.
- * - With `color` (or `alpha: false`) pixels within `threshold` colour distance
- *   of the reference colour are treated as background.
- *
- * Returns the original dimensions when everything is background.
- */
-export function trim(image: RawImage, options: { threshold?: number; color?: RGBA; alpha?: boolean } = {}): Rect {
+export function trim(
+  image: RawImage,
+  options: { threshold?: number; color?: RGBA; alpha?: boolean } = {},
+): Rect {
   assertImage(image);
   const useAlpha = options.alpha ?? options.color === undefined;
   const threshold = options.threshold ?? (useAlpha ? 0 : 10);
   const { width, height, data } = image;
 
-  let refR = 0;
-  let refG = 0;
-  let refB = 0;
-  if (!useAlpha && options.color) {
-    refR = options.color.r;
-    refG = options.color.g;
-    refB = options.color.b;
-  }
+  const refR = options.color ? options.color.r : data[0];
+  const refG = options.color ? options.color.g : data[1];
+  const refB = options.color ? options.color.b : data[2];
 
   const isContent = (i: number): boolean => {
     if (useAlpha) return data[i + 3] > threshold;
@@ -299,7 +284,6 @@ export function trim(image: RawImage, options: { threshold?: number; color?: RGB
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
-/** `true` when every pixel is fully transparent. */
 export function isBlank(image: RawImage): boolean {
   for (let i = 3; i < image.data.length; i += 4) {
     if (image.data[i] !== 0) return false;
@@ -307,14 +291,22 @@ export function isBlank(image: RawImage): boolean {
   return true;
 }
 
-/** Convenience wrapper around {@link trim} that returns the trimmed pixels. */
 export function trimImage(
   image: RawImage,
   options: { threshold?: number; color?: RGBA; alpha?: boolean } = {},
 ): RawImage {
   const rect = trim(image, options);
-  if (rect.x === 0 && rect.y === 0 && rect.width === image.width && rect.height === image.height) {
-    return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+  if (
+    rect.x === 0 &&
+    rect.y === 0 &&
+    rect.width === image.width &&
+    rect.height === image.height
+  ) {
+    return {
+      width: image.width,
+      height: image.height,
+      data: new Uint8ClampedArray(image.data),
+    };
   }
   return crop(image, rect);
 }

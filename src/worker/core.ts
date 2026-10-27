@@ -1,32 +1,28 @@
-import { ImageToolsError } from '../errors';
-import type { CanvasBackend } from '../codec/backend';
-import { getBackend } from '../codec/backend';
-import type { RawImage } from '../types';
-import { executeOps } from './execute';
-import type { WorkerOp, WorkerRequest, WorkerResponse } from './protocol';
-import { transferablesFor } from './protocol';
+import { ImageToolsError } from "../errors";
+import type { CanvasBackend } from "../codec/backend";
+import { getBackend } from "../codec/backend";
+import { executeOps } from "./execute";
+import type { WorkerRequest, WorkerResponse } from "./protocol";
+import { transferablesFor } from "./protocol";
 
-/** The tiny slice of a worker scope (or `MessagePort`) that the core needs. */
 export interface WorkerMessagePort {
   postMessage(message: WorkerResponse, transfer?: Transferable[]): void;
-  addEventListener?(type: 'message', listener: (event: { data: unknown }) => void): void;
-  on?(type: 'message', listener: (event: { data: unknown }) => void): void;
+  addEventListener?(
+    type: "message",
+    listener: (event: { data: unknown }) => void,
+  ): void;
+  on?(type: "message", listener: (event: { data: unknown }) => void): void;
   start?(): void;
 }
 
 export interface WorkerCoreOptions {
-  /** Resolves the canvas backend used for `decode`/`encode` requests. */
   backend?: () => Promise<CanvasBackend>;
-  /** Injectable for tests; defaults to `Date.now`. */
   now?: () => number;
 }
 
 export interface WorkerCore {
-  /** Handles one decoded message; resolves once the response has been posted. */
   handle(data: unknown): Promise<void>;
-  /** Marks a request as cancelled (its result will be dropped). */
   cancel(id: number): void;
-  /** Number of requests seen so far (diagnostics/tests). */
   readonly processed: number;
   dispose(): void;
 }
@@ -46,7 +42,10 @@ export interface WorkerCore {
  * checked between ops and before responding. A single resize of a huge image
  * cannot be interrupted mid-kernel — that limitation is documented in the README.
  */
-export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOptions = {}): WorkerCore {
+export function createWorkerCore(
+  port: WorkerMessagePort,
+  options: WorkerCoreOptions = {},
+): WorkerCore {
   const cancelled = new Set<number>();
   let processed = 0;
   const now = options.now ?? (() => Date.now());
@@ -56,7 +55,9 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
     port.postMessage(message, transferablesFor(message));
   };
 
-  async function handleProcess(request: Extract<WorkerRequest, { kind: 'process' }>): Promise<void> {
+  async function handleProcess(
+    request: Extract<WorkerRequest, { kind: "process" }>,
+  ): Promise<void> {
     const started = now();
     const progressEvery = request.progressEvery ?? 0;
     const image = executeOps(request.image, request.ops, {
@@ -64,32 +65,54 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
       onProgress:
         progressEvery > 0
           ? (ratio, index, total, label) => {
-              if ((index + 1) % progressEvery !== 0 && index + 1 !== total) return;
-              post({ id: request.id, kind: 'progress', phase: label, ratio, index, total });
+              if ((index + 1) % progressEvery !== 0 && index + 1 !== total)
+                return;
+              post({
+                id: request.id,
+                kind: "progress",
+                phase: label,
+                ratio,
+                index,
+                total,
+              });
             }
           : undefined,
     });
     if (cancelled.has(request.id)) {
       cancelled.delete(request.id);
-      post({ id: request.id, kind: 'cancelled' });
+      post({ id: request.id, kind: "cancelled" });
       return;
     }
-    post({ id: request.id, kind: 'result', image, durationMs: now() - started });
+    post({
+      id: request.id,
+      kind: "result",
+      image,
+      durationMs: now() - started,
+    });
   }
 
-  async function handleDecode(request: Extract<WorkerRequest, { kind: 'decode' }>): Promise<void> {
+  async function handleDecode(
+    request: Extract<WorkerRequest, { kind: "decode" }>,
+  ): Promise<void> {
     const started = now();
     const backend = await resolveBackend();
     const image = await backend.decode(new Blob([request.bytes]));
     if (cancelled.has(request.id)) {
       cancelled.delete(request.id);
-      post({ id: request.id, kind: 'cancelled' });
+      post({ id: request.id, kind: "cancelled" });
       return;
     }
-    post({ id: request.id, kind: 'result', image, durationMs: now() - started });
+    post({
+      id: request.id,
+      kind: "result",
+      image,
+      durationMs: now() - started,
+    });
   }
 
-  async function handleEncode(request: Extract<WorkerRequest, { kind: 'encode' }>): Promise<void> {
+  async function handleEncode(
+    request: Extract<WorkerRequest, { kind: "encode" }>,
+  ): Promise<void> {
     const started = now();
     const backend = await resolveBackend();
     const blob = await backend.encode(request.image, {
@@ -99,12 +122,12 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
     const bytes = await blob.arrayBuffer();
     if (cancelled.has(request.id)) {
       cancelled.delete(request.id);
-      post({ id: request.id, kind: 'cancelled' });
+      post({ id: request.id, kind: "cancelled" });
       return;
     }
     const response: WorkerResponse = {
       id: request.id,
-      kind: 'result',
+      kind: "result",
       bytes,
       type: blob.type || request.type,
       durationMs: now() - started,
@@ -125,12 +148,17 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
     },
     async handle(data) {
       const request = data as WorkerRequest;
-      if (!request || typeof request !== 'object' || typeof request.id !== 'number') {
+      if (
+        !request ||
+        typeof request !== "object" ||
+        typeof request.id !== "number"
+      ) {
         post({
           id: -1,
-          kind: 'error',
-          code: 'INVALID_ARGUMENT',
-          message: 'Malformed worker request: expected { id: number, kind: string }',
+          kind: "error",
+          code: "INVALID_ARGUMENT",
+          message:
+            "Malformed worker request: expected { id: number, kind: string }",
         });
         return;
       }
@@ -138,41 +166,42 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
       const id = request.id;
       try {
         switch (request.kind) {
-          case 'process':
+          case "process":
             await handleProcess(request);
             return;
-          case 'decode':
+          case "decode":
             await handleDecode(request);
             return;
-          case 'encode':
+          case "encode":
             await handleEncode(request);
             return;
-          case 'cancel':
+          case "cancel":
             cancelled.add(id);
             return;
-          case 'ping':
-            post({ id, kind: 'pong' });
+          case "ping":
+            post({ id, kind: "pong" });
             return;
           default:
             post({
               id,
-              kind: 'error',
-              code: 'INVALID_ARGUMENT',
+              kind: "error",
+              code: "INVALID_ARGUMENT",
               message: `Unknown request kind '${String((request as { kind: string }).kind)}'`,
             });
         }
       } catch (error) {
         const err = error as { code?: string; message?: string };
-        // A cancelled op surfaces as ABORTED -> report it as a cancellation.
-        if (err?.code === 'ABORTED') {
+        if (err?.code === "ABORTED") {
           cancelled.delete(id);
-          post({ id, kind: 'cancelled' });
+          post({ id, kind: "cancelled" });
           return;
         }
         post({
           id,
-          kind: 'error',
-          code: err?.code ?? (error instanceof ImageToolsError ? 'PROVIDER_FAILED' : 'INTERNAL'),
+          kind: "error",
+          code:
+            err?.code ??
+            (error instanceof ImageToolsError ? "PROVIDER_FAILED" : "INTERNAL"),
           message: err?.message ?? String(error),
         });
       }
@@ -180,22 +209,19 @@ export function createWorkerCore(port: WorkerMessagePort, options: WorkerCoreOpt
   };
 }
 
-/** Wires a core to a worker global scope (`self`) — used by the `picopix/worker` entry. */
-export function serveWorkerScope(scope: WorkerMessagePort, options: WorkerCoreOptions = {}): WorkerCore {
+export function serveWorkerScope(
+  scope: WorkerMessagePort,
+  options: WorkerCoreOptions = {},
+): WorkerCore {
   const core = createWorkerCore(scope, options);
   const listener = (event: { data: unknown }): void => {
     void core.handle(event.data);
   };
-  if (typeof scope.addEventListener === 'function') {
-    scope.addEventListener('message', listener);
-  } else if (typeof scope.on === 'function') {
-    scope.on('message', listener);
+  if (typeof scope.addEventListener === "function") {
+    scope.addEventListener("message", listener);
+  } else if (typeof scope.on === "function") {
+    scope.on("message", listener);
   }
   scope.start?.();
   return core;
-}
-
-/** Convenience for tests/benchmarks: run an ops list without any worker. */
-export function runOpsInProcess(image: RawImage, ops: WorkerOp[]): RawImage {
-  return executeOps(image, ops);
 }

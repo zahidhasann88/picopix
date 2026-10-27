@@ -1,14 +1,3 @@
-/**
- * `picopix` — browser-first, tree-shakeable image processing core.
- *
- * The main entry re-exports the pipeline API, the one-shot helpers, the codec
- * layer, metadata utilities and the provider interfaces. Pure pixel functions
- * live in `picopix/pixels` so that a bundle which only needs `resize`
- * never sees a `Uint8Array`-to-canvas code path (verified in CI by
- * `tests/treeshake.test.ts`).
- */
-
-// --- errors -----------------------------------------------------------------
 export {
   ImageToolsError,
   AbortError,
@@ -16,15 +5,12 @@ export {
   isImageToolsError,
   isAbortError,
   type ImageToolsErrorCode,
-} from './errors';
+} from "./errors";
 
-// --- types ------------------------------------------------------------------
-export type * from './types';
+export type * from "./types";
 
-// --- pure pixels (also available from `/pixels`) -----------------------------
-export * from './pixels';
+export * from "./pixels";
 
-// --- codec ------------------------------------------------------------------
 export {
   getDefaultBackend,
   getBackend,
@@ -37,33 +23,37 @@ export {
   registerBackendDetector,
   registerAsyncBackendDetector,
   type CanvasBackend,
-} from './codec/backend';
+} from "./codec/backend";
 export {
   browserBackend,
   isBrowserBackendAvailable,
   createBrowserCanvas,
   installBrowserBackend,
-} from './codec/browser';
+} from "./codec/browser";
 
-// --- metadata ---------------------------------------------------------------
-export { sniffFormat, formatToMimeType } from './meta/sniff';
-export { parseExif, parseTiff, readOrientation, findJpegExif, forEachJpegSegment } from './meta/exif';
+export { sniffFormat, formatToMimeType } from "./meta/sniff";
+export {
+  parseExif,
+  parseTiff,
+  readOrientation,
+  findJpegExif,
+  forEachJpegSegment,
+} from "./meta/exif";
 export {
   stripMetadataBytes,
   stripJpegMetadata,
   stripPngMetadata,
   strippableFormat,
   type StripOptions,
-} from './meta/strip';
-export { getImageInfo, readImageInfo, readJpegSize } from './meta/info';
+} from "./meta/strip";
+export { getImageInfo, readImageInfo, readJpegSize } from "./meta/info";
 
-// --- pipeline & helpers ------------------------------------------------------
 export {
   processImage,
   ImagePipeline,
   type PipelineOptions,
   type OutputOptions,
-} from './api/pipeline';
+} from "./api/pipeline";
 export {
   resizeImage,
   convertImage,
@@ -71,6 +61,8 @@ export {
   cropToAspect,
   generateThumbnail,
   stripMetadata,
+  generateSrcSet,
+  generatePlaceholder,
   type HelperOptions,
   type ResizeImageOptions,
   type ConvertImageOptions,
@@ -78,20 +70,20 @@ export {
   type ThumbnailOptions,
   type StripMetadataOptions,
   type CompressOptions,
-} from './api/helpers';
+  type SrcSetOptions,
+  type SrcSetEntry,
+  type PlaceholderOptions,
+  type Placeholder,
+} from "./api/helpers";
 
-// --- providers --------------------------------------------------------------
-export {
-  createMaskProvider,
-  createUpscaleProvider,
-} from './providers/factory';
+export { createMaskProvider, createUpscaleProvider } from "./providers/factory";
 export {
   chromaKeyProvider,
   chromaKeyMask,
   parseColor,
   suppressSpill,
   type ChromaKeyOptions,
-} from './providers/chroma';
+} from "./providers/chroma";
 export type {
   BackgroundRemovalProvider,
   BackgroundRemovalOptions,
@@ -99,9 +91,8 @@ export type {
   UpscaleOptions,
   MaskProviderFn,
   UpscaleProviderFn,
-} from './providers/types';
+} from "./providers/types";
 
-// --- worker (client side only; the worker bundle is `picopix/worker`) -
 export {
   createImageWorker,
   createWorkerPool,
@@ -110,6 +101,10 @@ export {
   type ImageWorkerPool,
   type WorkerPoolOptions,
   type RunOptions,
-} from './worker/client';
-export { executeOps, validateOps } from './worker/execute';
-export type { WorkerOp, WorkerRequest, WorkerResponse } from './worker/protocol';
+} from "./worker/client";
+export { executeOps, validateOps } from "./worker/execute";
+export type {
+  WorkerOp,
+  WorkerRequest,
+  WorkerResponse,
+} from "./worker/protocol";

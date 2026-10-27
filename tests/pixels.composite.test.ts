@@ -74,6 +74,22 @@ describe('composite', () => {
     expect(px(composite(target, source, { blendMode: 'normal' }), 0)).toEqual([10, 20, 30, 255]);
   });
 
+  it('does not bleed the colour of a transparent backdrop into the result', () => {
+    const target = createImage(1, 1, [255, 0, 0, 0]);
+    const source = createImage(1, 1, [0, 0, 255, 128]);
+    for (const blendMode of ['normal', 'multiply', 'screen'] as const) {
+      expect(px(composite(target, source, { blendMode }), 0)).toEqual([0, 0, 255, 128]);
+    }
+  });
+
+  it('weights the backdrop by its alpha (semi-transparent source-over)', () => {
+    // a = 128/255 ≈ 0.502 for both; source-over alpha = 0.502 + 0.502 * 0.498 ≈ 0.752 (192),
+    // r = 255 * 0.502 * 0.498 / 0.752 ≈ 85, b = 255 * 0.502 / 0.752 ≈ 170.
+    const target = createImage(1, 1, [255, 0, 0, 128]);
+    const source = createImage(1, 1, [0, 0, 255, 128]);
+    expect(px(composite(target, source), 0)).toEqual([85, 0, 170, 192]);
+  });
+
   it('rejects malformed images', () => {
     expect(() => composite(createImage(2, 2), { width: 2, height: 2, data: new Uint8ClampedArray(2) })).toThrow(
       /does not match/,
@@ -90,7 +106,6 @@ describe('alpha masks', () => {
     const out = applyAlphaMask(img, mask);
     expect(out.data[3]).toBe(255);
     expect(out.data[7]).toBe(0);
-    // RGB is untouched.
     expect(out.data[4]).toBe(255);
   });
 
